@@ -1,0 +1,9 @@
+pluginManagement {
+    repositories {
+
+    }
+    plugins {
+    }
+}
+
+rootProject.name = 'jeff-nguyen-backend-emergency-service'

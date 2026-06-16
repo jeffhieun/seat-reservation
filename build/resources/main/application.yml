@@ -1,0 +1,55 @@
+server:
+  port: 8080
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: false  # Set to true for HTTPS in production
+        max-age: 3600  # 1 hour session timeout
+        path: /
+
+spring:
+  profiles:
+    active: dev
+  cache:
+    type: simple
+  jackson:
+    default-property-inclusion: non_null
+
+  # ===========================
+  # Database Configuration
+  # ===========================
+  datasource:
+    url: jdbc:postgresql://localhost:5432/seat_reservation
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+  
+  # ===========================
+  # JPA / Hibernate Configuration
+  # ===========================
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Don't auto-create schema; use Liquibase
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+    show-sql: false
+    open-in-view: false
+  
+  # ===========================
+  # Liquibase Configuration
+  # ===========================
+  liquibase:
+    change-log: classpath:db/changelog/db-changelog-master.xml
+    enabled: false  # Disabled for development without database
+
+# ===========================
+# Security Configuration
+# ===========================
+security:
+  remember-me:
+    key: ${REMEMBER_ME_KEY:local-dev-key-change-in-production}
+    duration-days: 90

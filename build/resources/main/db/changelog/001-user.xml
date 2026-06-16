@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <!-- Create users table -->
+    <changeSet id="001-create-users-table" author="dev">
+        <createTable tableName="users">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uc_users_email"/>
+            </column>
+            <column name="password_hash" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Create index on email for faster lookups during login -->
+        <createIndex indexName="idx_users_email" tableName="users" unique="true">
+            <column name="email"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Seed demo user for testing -->
+    <!-- Email: test@example.com -->
+    <!-- Password: password123 (BCrypt hash with strength 10) -->
+    <!-- Generated using: BCryptPasswordEncoder with strength 10 -->
+    <changeSet id="002-seed-demo-user" author="dev">
+        <insert tableName="users">
+            <column name="email" value="test@example.com"/>
+            <!-- BCrypt hash of "password123" with strength 10 -->
+            <!-- Hash: $2a$10$dXJ3SUicVNrDY2Z8VHMh.eC2xVRMLNWFvD0jGDbNMqfHVNmXy1h0a -->
+            <column name="password_hash" value="$2a$10$dXJ3SUicVNrDY2Z8VHMh.eC2xVRMLNWFvD0jGDbNMqfHVNmXy1h0a"/>
+            <column name="created_at" valueDate="now()"/>
+            <column name="updated_at" valueDate="now()"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
+
