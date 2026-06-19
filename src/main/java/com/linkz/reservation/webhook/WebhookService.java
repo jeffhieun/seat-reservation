@@ -1,8 +1,9 @@
 package com.linkz.reservation.webhook;
 
+import com.linkz.reservation.audit.AuditService;
 import com.linkz.reservation.payment.Payment;
 import com.linkz.reservation.payment.PaymentRepository;
-import com.linkz.reservation.payment.PaymentStatus;
+import com.linkz.reservation.payment.PaymentService;
 import com.linkz.reservation.reservation.Reservation;
 import com.linkz.reservation.reservation.ReservationService;
 import lombok.RequiredArgsConstructor;
@@ -15,12 +16,10 @@ public class WebhookService {
     
     private final WebhookEventRepository webhookEventRepository;
     private final PaymentRepository paymentRepository;
+    private final PaymentService paymentService;
     private final ReservationService reservationService;
+    private final AuditService auditService;
     
-    /**
-     * Process a webhook event with idempotency guarantee.
-     * If the event has already been processed, this method returns immediately.
-     */
     @Transactional
     public void processPaymentSuccess(String eventId, String providerReference) {
         // Check if event was already processed (idempotency)
@@ -37,10 +36,12 @@ public class WebhookService {
         // Find payment by provider reference
         Payment payment = paymentRepository.findByProviderReference(providerReference)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
-        
-        // Update payment status
-        payment.setStatus(PaymentStatus.SUCCESS);
-        paymentRepository.save(payment);
+
+        auditService.recordWebhookPaymentSuccessReceived(eventId, payment);
+
+        // Update payment status through the payment service so audit tracking stays consistent
+        Payment updatedPayment = paymentService.markPaymentSuccess(providerReference);
+        auditService.recordPaymentSuccess(updatedPayment);
         
         // Confirm the reservation (which also updates seat status)
         Reservation reservation = payment.getReservation();
@@ -63,9 +64,11 @@ public class WebhookService {
         // Find and update payment
         Payment payment = paymentRepository.findByProviderReference(providerReference)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
-        
-        payment.setStatus(PaymentStatus.FAILED);
-        paymentRepository.save(payment);
+
+        auditService.recordWebhookPaymentFailureReceived(eventId, payment);
+
+        Payment updatedPayment = paymentService.markPaymentFailed(providerReference);
+        auditService.recordPaymentFailure(updatedPayment);
     }
 }
 

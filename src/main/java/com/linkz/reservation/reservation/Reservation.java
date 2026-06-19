@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
     @Index(name = "idx_reservations_user_id", columnList = "user_id"),
     @Index(name = "idx_reservations_seat_id", columnList = "seat_id"),
     @Index(name = "idx_reservations_status", columnList = "status"),
-    @Index(name = "idx_reservations_created_at", columnList = "created_at")
+    @Index(name = "idx_reservations_created_at", columnList = "created_at"),
+    @Index(name = "idx_reservations_status_created_at", columnList = "status,created_at")
 })
 @SequenceGenerator(name = "reservations_seq_gen", sequenceName = "reservations_seq", allocationSize = 50)
 @Data
@@ -38,6 +39,12 @@ public class Reservation {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ReservationStatus status;
+    
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+    
+    @Column(name = "expired_at")
+    private LocalDateTime expiredAt;
     
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

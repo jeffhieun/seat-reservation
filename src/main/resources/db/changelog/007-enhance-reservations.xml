@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="007-add-confirmation-expiration-timestamps" author="dev">
+        <addColumn tableName="reservations">
+            <column name="confirmed_at" type="TIMESTAMP"/>
+        </addColumn>
+        <addColumn tableName="reservations">
+            <column name="expired_at" type="TIMESTAMP"/>
+        </addColumn>
+
+        <createIndex indexName="idx_reservations_confirmed_at" tableName="reservations">
+            <column name="confirmed_at"/>
+        </createIndex>
+        <createIndex indexName="idx_reservations_expired_at" tableName="reservations">
+            <column name="expired_at"/>
+        </createIndex>
+        <createIndex indexName="idx_reservations_status_created_at" tableName="reservations">
+            <column name="status"/>
+            <column name="created_at"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
+
+

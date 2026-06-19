@@ -41,6 +41,13 @@ webhook:
   secret: ${WEBHOOK_SECRET:dev-secret}
 
 # ===========================
+# Reservation Configuration
+# ===========================
+reservation:
+  expiration-minutes: 10
+  scheduler-interval-seconds: 60
+
+# ===========================
 # Logging Configuration
 # ===========================
 logging:

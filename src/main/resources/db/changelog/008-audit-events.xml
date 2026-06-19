@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="008-create-audit-events-table" author="dev">
+        <createTable tableName="audit_events">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="event_type" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reservation_id" type="BIGINT"/>
+            <column name="payment_id" type="BIGINT"/>
+            <column name="user_id" type="BIGINT"/>
+            <column name="seat_id" type="BIGINT"/>
+            <column name="reference_id" type="VARCHAR(255)"/>
+            <column name="details" type="VARCHAR(1000)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_audit_events_event_type" tableName="audit_events">
+            <column name="event_type"/>
+        </createIndex>
+        <createIndex indexName="idx_audit_events_created_at" tableName="audit_events">
+            <column name="created_at"/>
+        </createIndex>
+        <createIndex indexName="idx_audit_events_reservation_id" tableName="audit_events">
+            <column name="reservation_id"/>
+        </createIndex>
+        <createIndex indexName="idx_audit_events_payment_id" tableName="audit_events">
+            <column name="payment_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
+

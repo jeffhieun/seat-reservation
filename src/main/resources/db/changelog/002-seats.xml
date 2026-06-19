@@ -5,7 +5,6 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
 
-    <!-- Create seats table -->
     <changeSet id="002-create-seats-table" author="dev">
         <createTable tableName="seats">
             <column name="id" type="BIGSERIAL" autoIncrement="true">
@@ -25,18 +24,15 @@
             </column>
         </createTable>
 
-        <!-- Create index on seat_number for faster lookups -->
         <createIndex indexName="idx_seats_seat_number" tableName="seats" unique="true">
             <column name="seat_number"/>
         </createIndex>
 
-        <!-- Create index on status for filtering available seats -->
         <createIndex indexName="idx_seats_status" tableName="seats">
             <column name="status"/>
         </createIndex>
     </changeSet>
 
-    <!-- Seed demo seats -->
     <changeSet id="002-seed-demo-seats" author="dev">
         <insert tableName="seats">
             <column name="seat_number" value="A1"/>

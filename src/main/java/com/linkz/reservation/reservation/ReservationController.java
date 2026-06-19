@@ -40,6 +40,9 @@ public class ReservationController {
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ReservationResponse.from(reservation));
+        } catch (SeatUnavailableException e) {
+            log.warn("Reservation conflict: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         } catch (IllegalArgumentException e) {
             log.warn("Reservation failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -63,6 +66,82 @@ public class ReservationController {
                 .toList();
         
         return ResponseEntity.ok(reservations);
+    }
+    
+    @GetMapping("/{reservationId}")
+    @PreAuthorize("isAuthenticated()")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getReservationDetails(
+            @PathVariable Long reservationId,
+            Authentication authentication) {
+        try {
+            User user = userRepository.findByEmail(authentication.getName())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            
+            Reservation reservation = reservationService.getReservationById(reservationId);
+            
+            // Verify ownership
+            if (!reservation.getUser().getId().equals(user.getId())) {
+                log.warn("Access denied: User {} trying to access reservation {}", user.getId(), reservationId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            return ResponseEntity.ok(ReservationResponse.from(reservation));
+        } catch (IllegalArgumentException e) {
+            log.warn("Reservation not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+    
+    @PostMapping("/{reservationId}/confirm")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> confirmReservation(
+            @PathVariable Long reservationId,
+            Authentication authentication) {
+        try {
+            User user = userRepository.findByEmail(authentication.getName())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            
+            Reservation reservation = reservationService.getReservationById(reservationId);
+            
+            // Verify ownership
+            if (!reservation.getUser().getId().equals(user.getId())) {
+                log.warn("Access denied: User {} trying to confirm reservation {}", user.getId(), reservationId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            log.debug("Confirming reservation {} for user {}", reservationId, user.getId());
+            reservationService.confirmReservation(reservationId);
+            
+            Reservation confirmedReservation = reservationService.getReservationById(reservationId);
+            log.info("Reservation {} confirmed by user {}", reservationId, user.getId());
+            
+            return ResponseEntity.ok(ReservationResponse.from(confirmedReservation));
+        } catch (IllegalArgumentException e) {
+            log.warn("Confirmation failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+    
+    @PostMapping("/{reservationId}/expire")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> manuallyExpireReservation(
+            @PathVariable Long reservationId,
+            Authentication authentication) {
+        try {
+            Reservation reservation = reservationService.getReservationById(reservationId);
+            
+            log.debug("Manually expiring reservation {} by admin {}", reservationId, authentication.getName());
+            reservationService.expireReservation(reservation);
+            
+            Reservation expiredReservation = reservationService.getReservationById(reservationId);
+            log.info("Reservation {} manually expired by admin {}", reservationId, authentication.getName());
+            
+            return ResponseEntity.ok(ReservationResponse.from(expiredReservation));
+        } catch (IllegalArgumentException e) {
+            log.warn("Expiration failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 }
 

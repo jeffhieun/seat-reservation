@@ -5,7 +5,6 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
 
-    <!-- Create payments table -->
     <changeSet id="004-create-payments-table" author="dev">
         <createTable tableName="payments">
             <column name="id" type="BIGSERIAL" autoIncrement="true">
@@ -31,7 +30,6 @@
             </column>
         </createTable>
 
-        <!-- Create indexes for fast lookups -->
         <createIndex indexName="idx_payments_reservation_id" tableName="payments">
             <column name="reservation_id"/>
         </createIndex>

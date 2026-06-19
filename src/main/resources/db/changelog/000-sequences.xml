@@ -5,15 +5,13 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
 
-    <!-- Create sequences for tables. Some Hibernate naming strategies or environments expect
-         sequences named <table>_seq; create them to avoid schema-validation failures. -->
     <changeSet id="000-create-sequences" author="dev">
-        <!-- Use incrementBy 50 to match Hibernate's default allocationSize (prevents mapping mismatch errors) -->
         <createSequence sequenceName="users_seq" startValue="1" incrementBy="50" />
         <createSequence sequenceName="seats_seq" startValue="1" incrementBy="50" />
         <createSequence sequenceName="reservations_seq" startValue="1" incrementBy="50" />
         <createSequence sequenceName="payments_seq" startValue="1" incrementBy="50" />
         <createSequence sequenceName="webhook_events_seq" startValue="1" incrementBy="50" />
+        <createSequence sequenceName="audit_events_seq" startValue="1" incrementBy="50" />
     </changeSet>
 
 </databaseChangeLog>

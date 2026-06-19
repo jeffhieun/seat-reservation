@@ -5,7 +5,6 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
 
-    <!-- Create webhook_events table -->
     <changeSet id="005-create-webhook-events-table" author="dev">
         <createTable tableName="webhook_events">
             <column name="id" type="BIGSERIAL" autoIncrement="true">
@@ -19,7 +18,6 @@
             </column>
         </createTable>
 
-        <!-- Create index on event_id for idempotency checks -->
         <createIndex indexName="idx_webhook_events_event_id" tableName="webhook_events" unique="true">
             <column name="event_id"/>
         </createIndex>

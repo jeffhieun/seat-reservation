@@ -22,7 +22,7 @@ public class SeatController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<SeatResponse>> getSeats() {
         log.debug("Fetching available seats");
-        List<SeatResponse> seats = seatService.getAllSeats()
+        List<SeatResponse> seats = seatService.getAvailableSeats()
                 .stream()
                 .map(SeatResponse::from)
                 .toList();

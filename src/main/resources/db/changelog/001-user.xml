@@ -5,7 +5,6 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
 
-    <!-- Create users table -->
     <changeSet id="001-create-users-table" author="dev">
         <createTable tableName="users">
             <column name="id" type="BIGSERIAL" autoIncrement="true">
@@ -25,31 +24,18 @@
             </column>
         </createTable>
 
-        <!-- Create index on email for faster lookups during login -->
         <createIndex indexName="idx_users_email" tableName="users" unique="true">
             <column name="email"/>
         </createIndex>
     </changeSet>
 
-    <!-- Create a sequence that Hibernate may expect when using sequence-based id generation in some environments
-         Some environments or Hibernate naming strategies may expect a sequence named 'users_seq'. Creating it
-         here prevents schema-validation errors when that sequence is checked. It is safe even if the id column
-         uses a different auto-created sequence (BIGSERIAL) because the presence of this sequence satisfies
-         Hibernate's schema validation. -->
     <changeSet id="001-create-users-sequence" author="dev">
-        <!-- Keep incrementBy consistent with Hibernate allocationSize -->
         <createSequence sequenceName="users_seq" startValue="1" incrementBy="50" />
     </changeSet>
 
-    <!-- Seed demo user for testing -->
-    <!-- Email: test@example.com -->
-    <!-- Password: password123 (BCrypt hash with strength 10) -->
-    <!-- Generated using: BCryptPasswordEncoder with strength 10 -->
     <changeSet id="002-seed-demo-user" author="dev">
         <insert tableName="users">
             <column name="email" value="test@example.com"/>
-            <!-- BCrypt hash of "password123" with strength 10 -->
-            <!-- Hash: $2a$10$dXJ3SUicVNrDY2Z8VHMh.eC2xVRMLNWFvD0jGDbNMqfHVNmXy1h0a -->
             <column name="password_hash" value="$2a$10$dXJ3SUicVNrDY2Z8VHMh.eC2xVRMLNWFvD0jGDbNMqfHVNmXy1h0a"/>
             <column name="created_at" valueDate="now()"/>
             <column name="updated_at" valueDate="now()"/>

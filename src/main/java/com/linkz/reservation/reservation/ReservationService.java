@@ -1,23 +1,20 @@
 package com.linkz.reservation.reservation;
 
-import com.linkz.reservation.payment.Payment;
-import com.linkz.reservation.payment.PaymentRepository;
-import com.linkz.reservation.payment.PaymentStatus;
+import com.linkz.reservation.audit.AuditService;
 import com.linkz.reservation.seat.Seat;
 import com.linkz.reservation.seat.SeatRepository;
 import com.linkz.reservation.seat.SeatStatus;
 import com.linkz.reservation.user.User;
 import com.linkz.reservation.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReservationService {
@@ -25,34 +22,26 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final SeatRepository seatRepository;
     private final UserRepository userRepository;
-    private final PaymentRepository paymentRepository;
-    private final EntityManager entityManager;
+    private final ReservationProperties reservationProperties;
+    private final AuditService auditService;
     
-    /**
-     * Reserve a seat for a user with pessimistic write lock to prevent double booking.
-     * This ensures that only one reservation succeeds for each seat.
-     */
     @Transactional
     public Reservation reserveSeat(Long userId, Long seatId) {
         // Verify user exists
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         
-        // Lock the seat row to prevent concurrent modifications
-        Seat seat = seatRepository.findById(seatId)
+        Seat seat = seatRepository.findByIdForUpdate(seatId)
                 .orElseThrow(() -> new IllegalArgumentException("Seat not found"));
-        
-        // Apply pessimistic write lock
-        seat = entityManager.find(Seat.class, seatId, LockModeType.PESSIMISTIC_WRITE);
         
         // Verify seat is available
         if (!SeatStatus.AVAILABLE.equals(seat.getStatus())) {
-            throw new IllegalArgumentException("Seat is not available");
+            throw new SeatUnavailableException("Seat is not available");
         }
         
         // Update seat status to PENDING_PAYMENT
         seat.setStatus(SeatStatus.PENDING_PAYMENT);
-        seatRepository.save(seat);
+        seatRepository.saveAndFlush(seat);
         
         // Create reservation
         Reservation reservation = Reservation.builder()
@@ -61,7 +50,9 @@ public class ReservationService {
                 .status(ReservationStatus.PENDING_PAYMENT)
                 .build();
         
-        return reservationRepository.save(reservation);
+        Reservation savedReservation = reservationRepository.saveAndFlush(reservation);
+        auditService.recordReservationCreated(savedReservation);
+        return savedReservation;
     }
     
     @Transactional
@@ -74,20 +65,28 @@ public class ReservationService {
         }
         
         reservation.setStatus(ReservationStatus.CONFIRMED);
+        reservation.setConfirmedAt(LocalDateTime.now());
         reservation.getSeat().setStatus(SeatStatus.RESERVED);
         
-        reservationRepository.save(reservation);
-        seatRepository.save(reservation.getSeat());
+        reservationRepository.saveAndFlush(reservation);
+        seatRepository.saveAndFlush(reservation.getSeat());
+        
+        log.info("Reservation {} confirmed at {}", reservationId, reservation.getConfirmedAt());
+        auditService.recordReservationConfirmed(reservation);
     }
     
     @Transactional
     public void expireReservation(Reservation reservation) {
         if (ReservationStatus.PENDING_PAYMENT.equals(reservation.getStatus())) {
             reservation.setStatus(ReservationStatus.EXPIRED);
+            reservation.setExpiredAt(LocalDateTime.now());
             reservation.getSeat().setStatus(SeatStatus.AVAILABLE);
             
-            reservationRepository.save(reservation);
-            seatRepository.save(reservation.getSeat());
+            reservationRepository.saveAndFlush(reservation);
+            seatRepository.saveAndFlush(reservation.getSeat());
+            
+            log.info("Reservation {} expired at {}", reservation.getId(), reservation.getExpiredAt());
+            auditService.recordReservationExpired(reservation);
         }
     }
     
@@ -100,10 +99,13 @@ public class ReservationService {
         return reservationRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
     
-    public List<Reservation> getExpiredReservations(LocalDateTime before) {
+    public List<Reservation> getExpiredReservations() {
+        LocalDateTime expirationThreshold = LocalDateTime.now()
+                .minusMinutes(reservationProperties.getExpirationMinutes());
+        
         return reservationRepository.findByStatusAndCreatedAtBefore(
                 ReservationStatus.PENDING_PAYMENT, 
-                before
+                expirationThreshold
         );
     }
 }
