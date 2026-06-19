@@ -1,0 +1,33 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/reservation_db}
+    username: ${DB_USERNAME:reservation_user}
+    password: ${DB_PASSWORD:change-me}
+    driver-class-name: org.postgresql.Driver
+
+  liquibase:
+    change-log: classpath:db/changelog/db-changelog-master.xml
+    enabled: true
+
+  jpa:
+    show-sql: false
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+
+jwt:
+  secret: ${JWT_SECRET:change-me-in-production}
+  expiration-days: ${JWT_EXPIRATION_DAYS:90}
+
+webhook:
+  secret: ${WEBHOOK_SECRET:change-me-in-production}
+
+logging:
+  level:
+    com.linkz: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.web: INFO
+
