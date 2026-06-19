@@ -4,52 +4,59 @@ server:
     session:
       cookie:
         http-only: true
-        secure: false  # Set to true for HTTPS in production
-        max-age: 3600  # 1 hour session timeout
+        secure: false
         path: /
 
 spring:
+  application:
+    name: seat-reservation-api
   profiles:
     active: dev
-  cache:
-    type: simple
   jackson:
     default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
 
-  # ===========================
-  # Database Configuration
-  # ===========================
-  datasource:
-    url: jdbc:postgresql://localhost:5432/seat_reservation
-    username: postgres
-    password: password
-    driver-class-name: org.postgresql.Driver
-  
   # ===========================
   # JPA / Hibernate Configuration
   # ===========================
   jpa:
     hibernate:
-      ddl-auto: validate  # Don't auto-create schema; use Liquibase
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-        use_sql_comments: true
+        format_sql: false
     show-sql: false
     open-in-view: false
-  
-  # ===========================
-  # Liquibase Configuration
-  # ===========================
-  liquibase:
-    change-log: classpath:db/changelog/db-changelog-master.xml
-    enabled: false  # Disabled for development without database
 
 # ===========================
-# Security Configuration
+# JWT Configuration
 # ===========================
-security:
-  remember-me:
-    key: ${REMEMBER_ME_KEY:local-dev-key-change-in-production}
-    duration-days: 90
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-change-in-production-minimum-256-bits}
+  expiration-days: 90
+
+webhook:
+  secret: ${WEBHOOK_SECRET:dev-secret}
+
+# ===========================
+# Logging Configuration
+# ===========================
+logging:
+  level:
+    com.linkz: INFO
+    org.springframework.web: INFO
+
+# ===========================
+# Actuator Configuration
+# ===========================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+  endpoint:
+    health:
+      show-details: always
+

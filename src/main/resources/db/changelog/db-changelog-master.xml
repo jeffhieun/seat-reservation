@@ -5,8 +5,14 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
 
+    <!-- Include sequence setup first to avoid Hibernate schema-validation missing sequence errors -->
+    <include file="db/changelog/000-sequences.xml"/>
     <!-- Include all changelogs -->
     <include file="db/changelog/001-user.xml"/>
+    <include file="db/changelog/002-seats.xml"/>
+    <include file="db/changelog/003-reservations.xml"/>
+    <include file="db/changelog/004-payments.xml"/>
+    <include file="db/changelog/005-webhook-events.xml"/>
 
 </databaseChangeLog>
 

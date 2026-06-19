@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Table(name = "users", indexes = {
     @Index(name = "idx_email", columnList = "email", unique = true)
 })
+@SequenceGenerator(name = "users_seq_gen", sequenceName = "users_seq", allocationSize = 50)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,7 +18,7 @@ import java.time.LocalDateTime;
 public class User {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "users_seq_gen")
     private Long id;
     
     @Column(nullable = false, unique = true)

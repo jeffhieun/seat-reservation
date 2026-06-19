@@ -1,18 +1,27 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 echo "🛑 Stopping Gradle daemon..."
 ./gradlew --stop || true
 
-echo "🧹 Cleaning..."
+echo "🧹 Cleaning workspace..."
 rm -rf .gradle build
 
-echo "⬇️ Setting Gradle 8.7..."
-./gradlew wrapper --gradle-version 8.7
+echo "🛑 Stopping existing containers..."
+podman compose down || true
 
-echo "🔨 Building..."
+echo "🔨 Building application..."
 ./gradlew clean build
 
-echo "🚀 Starting app (local dev)..."
-./gradlew bootRun
+echo "🐳 Building container image..."
+podman build -t seat-reservation-api:latest .
+
+echo "🚀 Starting services..."
+podman compose up -d
+
+echo "📋 Running containers:"
+podman ps
+
+echo "🏥 Health check:"
+echo "curl http://localhost:8080/actuator/health"

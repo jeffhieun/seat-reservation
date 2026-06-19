@@ -1,39 +1,33 @@
 package com.linkz.reservation.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.RememberMeServices;
-import org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+    
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     
     private static final String[] PUBLIC_ENDPOINTS = {
         "/api/auth/login",
+        "/api/auth/register",
         "/actuator/health",
         "/swagger-ui.html",
         "/swagger-ui/**",
-        "/v3/api-docs",
         "/v3/api-docs/**"
     };
-    
-    @Value("${security.remember-me.key}")
-    private String rememberMeKey;
-    
-    @Value("${security.remember-me.duration-days:90}")
-    private int rememberMeDurationDays;
     
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -41,64 +35,20 @@ public class SecurityConfig {
     }
     
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
-            throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
-    }
-    
-    @Bean
-    public DaoAuthenticationProvider authenticationProvider(
-            UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder);
-        authProvider.setHideUserNotFoundExceptions(true);
-        return authProvider;
-    }
-    
-    @Bean
-    public RememberMeServices rememberMeServices(UserDetailsService userDetailsService) {
-        int durationSeconds = rememberMeDurationDays * 24 * 60 * 60;
-        
-        TokenBasedRememberMeServices rememberMeServices = new TokenBasedRememberMeServices(
-            rememberMeKey,
-            userDetailsService
-        );
-        rememberMeServices.setTokenValiditySeconds(durationSeconds);
-        rememberMeServices.setParameter("remember-me");
-        return rememberMeServices;
-    }
-    
-    @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            RememberMeServices rememberMeServices) throws Exception {
-        
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                 .anyRequest().authenticated()
             )
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                .invalidSessionUrl("/api/auth/login")
-            )
-            .rememberMe(rememberMe -> rememberMe
-                .rememberMeServices(rememberMeServices)
-                .key(rememberMeKey)
-            )
-            .logout(logout -> logout
-                .logoutUrl("/api/auth/logout")
-                .logoutSuccessUrl("/api/auth/login")
-                .deleteCookies("JSESSIONID")
-                .permitAll()
-            );
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         
         return http.build();
     }
 }
-

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <!-- Create seats table -->
+    <changeSet id="002-create-seats-table" author="dev">
+        <createTable tableName="seats">
+            <column name="id" type="BIGSERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="seat_number" type="VARCHAR(10)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uc_seats_seat_number"/>
+            </column>
+            <column name="status" type="VARCHAR(50)" defaultValue="AVAILABLE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Create index on seat_number for faster lookups -->
+        <createIndex indexName="idx_seats_seat_number" tableName="seats" unique="true">
+            <column name="seat_number"/>
+        </createIndex>
+
+        <!-- Create index on status for filtering available seats -->
+        <createIndex indexName="idx_seats_status" tableName="seats">
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Seed demo seats -->
+    <changeSet id="002-seed-demo-seats" author="dev">
+        <insert tableName="seats">
+            <column name="seat_number" value="A1"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="created_at" valueDate="now()"/>
+            <column name="updated_at" valueDate="now()"/>
+        </insert>
+        <insert tableName="seats">
+            <column name="seat_number" value="A2"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="created_at" valueDate="now()"/>
+            <column name="updated_at" valueDate="now()"/>
+        </insert>
+        <insert tableName="seats">
+            <column name="seat_number" value="A3"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="created_at" valueDate="now()"/>
+            <column name="updated_at" valueDate="now()"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
+

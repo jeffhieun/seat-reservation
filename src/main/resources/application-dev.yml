@@ -1,62 +1,16 @@
-server:
-  port: 8080
-  servlet:
-    session:
-      cookie:
-        http-only: true
-        secure: false
-        max-age: 3600
-        path: /
-
 spring:
-  # ===========================
-  # H2 In-Memory Database (Development)
-  # ===========================
   datasource:
-    url: jdbc:h2:mem:testdb
-    driverClassName: org.h2.Driver
-    username: sa
-    password:
-  
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-  
-  # ===========================
-  # JPA / Hibernate Configuration
-  # ===========================
-  jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
-    hibernate:
-      ddl-auto: create-drop
-      use-new-id-generator-mappings: false
-    show-sql: false
-    properties:
-      hibernate:
-        format_sql: true
-        jdbc:
-          batch_size: 20
-          fetch_size: 50
-        order_inserts: true
-        order_updates: true
-  
-  # ===========================
-  # Liquibase Configuration (Disabled for dev)
-  # ===========================
+    url: jdbc:postgresql://postgres:5432/reservation_db
+    username: reservation_user
+    password: reservation_password
+    driver-class-name: org.postgresql.Driver
+
   liquibase:
-    enabled: false
+    change-log: classpath:db/changelog/db-changelog-master.xml
+    enabled: true
 
-  cache:
-    type: simple
-  jackson:
-    default-property-inclusion: non_null
-
-# ===========================
-# Security Configuration
-# ===========================
-security:
-  remember-me:
-    key: dev-key-not-secure-change-me
-    duration-days: 90
-
+logging:
+  level:
+    com.linkz: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.web: DEBUG

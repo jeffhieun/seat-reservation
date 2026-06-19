@@ -1,9 +1,8 @@
 pluginManagement {
     repositories {
-
-    }
-    plugins {
+        mavenCentral()
+        gradlePluginPortal()
     }
 }
 
-rootProject.name = 'jeff-nguyen-backend-emergency-service'
+rootProject.name = 'seat-reservation'
