@@ -14,9 +14,7 @@ podman compose down || true
 echo "🔨 Building application..."
 ./gradlew clean build
 
-git add .
-git commit -m "feat: implement FR-10 audit tracking and run full tests in local script"
-git push origin <your-branch>echo "🧪 Running full test suite..."
+echo "🧪 Running full test suite..."
 ./gradlew test
 
 echo "🐳 Building container image..."
