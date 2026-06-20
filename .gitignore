@@ -1,2 +1,4 @@
 /.idea/
-/build/
+/backend/.gradle/
+/backend/build/
+/frontend/node_modules/
