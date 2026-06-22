@@ -1,5 +1,3 @@
-Updated `README.md` removing **Development Notes** section:
-
 ````md
 # Seat Reservation Platform
 
