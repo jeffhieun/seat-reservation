@@ -9,9 +9,15 @@ function PaymentPage() {
   const navigate = useNavigate();
   const { reservationId } = useParams();
 
-  const [reservation, setReservation] = useState(location.state?.reservation || null);
+  const [reservation, setReservation] = useState(
+    location.state?.reservation || null
+  );
+
   const [payment, setPayment] = useState(null);
-  const [loadingReservation, setLoadingReservation] = useState(!location.state?.reservation);
+  const [loadingReservation, setLoadingReservation] = useState(
+    !location.state?.reservation
+  );
+
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
 
@@ -28,8 +34,11 @@ function PaymentPage() {
         const data = await getReservationById(reservationId);
         setReservation(data);
       } catch (err) {
-        const message = err?.response?.data?.error || err?.message || "Failed to load reservation.";
-        setError(message);
+        setError(
+          err?.response?.data?.error ||
+          err?.message ||
+          "Failed to load reservation."
+        );
       } finally {
         setLoadingReservation(false);
       }
@@ -38,54 +47,143 @@ function PaymentPage() {
     loadReservation();
   }, [reservationId, reservation]);
 
+
   const handlePayNow = async () => {
+    if (paying) {
+      return;
+    }
+
     setError("");
     setPaying(true);
 
     try {
-      const data = await initiatePayment(reservationId);
-      setPayment(data);
+      const paymentResponse = await initiatePayment(reservationId);
+
+      console.log("Payment created:", paymentResponse);
+
+      setPayment(paymentResponse);
+
       navigate("/success", {
         state: {
           reservation,
-          payment: data,
+          payment: paymentResponse,
         },
       });
+
     } catch (err) {
-      const message = err?.response?.data?.error || err?.message || "Payment failed.";
-      setError(message);
+      console.error("Payment error:", err);
+
+      setError(
+        err?.response?.data?.error ||
+        err?.message ||
+        "Payment failed."
+      );
+
     } finally {
       setPaying(false);
     }
   };
 
+
   return (
     <main>
       <Navbar />
+
       <section className="page-content">
+
         <h2>Payment</h2>
 
-        {loadingReservation ? <p>Loading reservation...</p> : null}
-        {error ? <p className="error-text">{error}</p> : null}
 
-        {!loadingReservation && !reservation ? <p className="empty-state">No reservation data.</p> : null}
+        {loadingReservation && (
+          <p>Loading reservation...</p>
+        )}
 
-        {reservation ? (
+
+        {error && (
+          <p className="error-text">
+            {error}
+          </p>
+        )}
+
+
+        {!loadingReservation && !reservation && (
+          <p className="empty-state">
+            No reservation data.
+          </p>
+        )}
+
+
+
+        {reservation && (
+
           <div className="card details-card">
-            <p><strong>Reservation ID:</strong> {reservation.id}</p>
-            <p><strong>Seat Number:</strong> {reservation.seat_number}</p>
-            <p><strong>Reservation Status:</strong> {reservation.status}</p>
-            <p><strong>Amount:</strong> {payment?.amount || "N/A"}</p>
 
-            <button className="btn" type="button" onClick={handlePayNow} disabled={paying}>
+            <p>
+              <strong>Reservation ID:</strong>
+              {" "}
+              {reservation.id}
+            </p>
+
+
+            <p>
+              <strong>Seat Number:</strong>
+              {" "}
+              {reservation.seat_number}
+            </p>
+
+
+            <p>
+              <strong>Reservation Status:</strong>
+              {" "}
+              {reservation.status}
+            </p>
+
+
+            {payment && (
+              <>
+                <p>
+                  <strong>Payment ID:</strong>
+                  {" "}
+                  {payment.id}
+                </p>
+
+
+                <p>
+                  <strong>Payment Status:</strong>
+                  {" "}
+                  {payment.status}
+                </p>
+
+
+                <p>
+                  <strong>Amount:</strong>
+                  {" "}
+                  {payment.amount}
+                </p>
+              </>
+            )}
+
+
+
+            <button
+              className="btn"
+              type="button"
+              onClick={handlePayNow}
+              disabled={paying}
+            >
               {paying ? "Processing..." : "Pay Now"}
             </button>
+
+
           </div>
-        ) : null}
+
+        )}
+
       </section>
+
     </main>
   );
 }
 
-export default PaymentPage;
 
+export default PaymentPage;
