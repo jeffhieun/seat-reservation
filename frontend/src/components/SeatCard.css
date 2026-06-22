@@ -1,0 +1,41 @@
+.seat-card {
+  width: 100%;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: left;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.seat-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+.seat-card-number {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.seat-card-status {
+  font-size: 13px;
+}
+
+.seat-card-available {
+  background: #2e7d32;
+}
+
+.seat-card-reserved {
+  background: #ef6c00;
+}
+
+.seat-card-booked {
+  background: #c62828;
+}
+
+.seat-card-maintenance {
+  background: #757575;
+}
+

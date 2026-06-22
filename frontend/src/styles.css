@@ -164,6 +164,29 @@ input {
   margin: 12px 0 16px;
 }
 
+.seats-block {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.seats-grid-wrap {
+  max-height: 460px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.reservations-block {
+  margin-top: 28px;
+}
+
+.reservations-block h2 {
+  margin: 0 0 12px;
+}
+
+.reservations-table-wrap {
+  margin-top: 12px;
+}
+
 .details-card p {
   margin: 8px 0;
 }

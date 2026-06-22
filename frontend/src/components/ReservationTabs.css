@@ -1,0 +1,21 @@
+.reservation-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reservation-tab {
+  border: 1px solid #d9d9d9;
+  background: #ffffff;
+  color: #222222;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.reservation-tab-active {
+  border-color: #1976d2;
+  color: #1976d2;
+  font-weight: 600;
+}
+

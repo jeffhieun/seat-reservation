@@ -1,8 +1,9 @@
 import SeatCard from "./SeatCard";
+import "./SeatGrid.css";
 
 function SeatGrid({ seats, onSeatSelect }) {
   if (!seats || seats.length === 0) {
-    return <p className="empty-state">No seats found.</p>;
+    return <p className="seat-grid-empty">No seats found</p>;
   }
 
   return (

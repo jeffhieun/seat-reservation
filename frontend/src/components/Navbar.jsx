@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import "./Navbar.css";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ function Navbar() {
   return (
     <header className="navbar">
       <h1 className="navbar-title">Seat Reservation Platform</h1>
-      <button className="btn btn-secondary" onClick={handleLogout} type="button">
+      <button className="navbar-logout" onClick={handleLogout} type="button">
         Logout
       </button>
     </header>

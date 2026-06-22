@@ -1,8 +1,10 @@
+import "./SeatCard.css";
+
 const STATUS_CLASS_MAP = {
-  AVAILABLE: "seat-available",
-  RESERVED: "seat-reserved",
-  BOOKED: "seat-booked",
-  MAINTENANCE: "seat-maintenance",
+  AVAILABLE: "seat-card-available",
+  RESERVED: "seat-card-reserved",
+  BOOKED: "seat-card-booked",
+  MAINTENANCE: "seat-card-maintenance",
 };
 
 function SeatCard({ seat, onSelect }) {
@@ -23,8 +25,8 @@ function SeatCard({ seat, onSelect }) {
       onClick={handleClick}
       disabled={!isAvailable}
     >
-      <div className="seat-number">{seat?.seatNumber || "-"}</div>
-      <div className="seat-status">{status}</div>
+      <div className="seat-card-number">{seat?.seatNumber || "-"}</div>
+      <div className="seat-card-status">{status}</div>
     </button>
   );
 }
