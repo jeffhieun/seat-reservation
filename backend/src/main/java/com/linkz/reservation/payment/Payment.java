@@ -10,11 +10,15 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "payments", indexes = {
-    @Index(name = "idx_payments_reservation_id", columnList = "reservation_id"),
-    @Index(name = "idx_payments_status", columnList = "status"),
-    @Index(name = "idx_payments_provider_reference", columnList = "provider_reference")
-})
+@Table(name = "payments",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uq_payments_reservation_id", columnNames = "reservation_id")
+    },
+    indexes = {
+        @Index(name = "idx_payments_reservation_id", columnList = "reservation_id"),
+        @Index(name = "idx_payments_status", columnList = "status"),
+        @Index(name = "idx_payments_provider_reference", columnList = "provider_reference")
+    })
 @SequenceGenerator(name = "payments_seq_gen", sequenceName = "payments_seq", allocationSize = 50)
 @Data
 @NoArgsConstructor

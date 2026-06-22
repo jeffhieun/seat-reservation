@@ -27,13 +27,17 @@ public class PaymentController {
                     .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
             log.debug("Initiating payment for reservation: {}", reservationId);
-            
-            Payment payment = paymentService.initiatePayment(reservationId, user.getId());
-            
-            log.info("Payment initiated: {} for reservation: {}", payment.getId(), reservationId);
-            
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(PaymentResponse.from(payment));
+
+            PaymentInitiationResult result = paymentService.initiatePayment(reservationId, user.getId());
+
+            if (result.created()) {
+                log.info("Payment initiated: {} for reservation: {}", result.payment().getId(), reservationId);
+                return ResponseEntity.status(HttpStatus.CREATED)
+                        .body(PaymentResponse.from(result.payment()));
+            } else {
+                log.debug("Returning existing pending payment: {} for reservation: {}", result.payment().getId(), reservationId);
+                return ResponseEntity.ok(PaymentResponse.from(result.payment()));
+            }
         } catch (PaymentAccessDeniedException e) {
             log.warn("Payment access denied: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();

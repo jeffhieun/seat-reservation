@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <!--
+        Enforce a one-payment-per-reservation rule at the database level.
+        This prevents duplicate payment rows even under concurrent requests
+        (race conditions that slip past the application-level idempotency check).
+    -->
+    <changeSet id="009-add-unique-constraint-payments-reservation-id" author="dev">
+        <addUniqueConstraint
+            tableName="payments"
+            columnNames="reservation_id"
+            constraintName="uq_payments_reservation_id"/>
+    </changeSet>
+
+</databaseChangeLog>
+
