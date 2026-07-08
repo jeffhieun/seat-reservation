@@ -4,21 +4,6 @@
 
 
 
-## Hibernate
-**Status:** 🟡 Partial
-
-**Evidence:** Proper `@Entity`, `@Id`, `@GeneratedValue`, `@SequenceGenerator`, and LAZY relationships (`Reservation -> User/Seat`, `Payment -> Reservation`)
-
-**Missing implementation:**
-- No `@Version` optimistic locking.
-- Lifecycle strategy for cascade/orphan removal not explicitly modeled.
-
-**Recommended improvements:**
-- Add optimistic locking where needed.
-- Clarify lifecycle ownership/cascade strategy.
-
-**Priority:** Medium
-
 ## Frontend
 **Status:** 🟡 Partial
 

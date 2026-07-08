@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SeatsPage from "./SeatsPage";
 import { getSeats } from "../api/seatApi";
@@ -29,11 +29,19 @@ vi.mock("../components/Navbar", () => ({
 }));
 
 vi.mock("../components/ReservationTabs", () => ({
-  default: () => <div>ReservationTabs</div>,
+  default: ({ pendingCount, confirmedCount, expiredCount }) => (
+    <div>
+      Tabs {pendingCount}/{confirmedCount}/{expiredCount}
+    </div>
+  ),
 }));
 
 vi.mock("../components/ReservationTable", () => ({
-  default: () => <div>ReservationTable</div>,
+  default: ({ reservations }) => (
+    <div>
+      Table {reservations.map((reservation) => reservation.status).join(",")}
+    </div>
+  ),
 }));
 
 vi.mock("../components/SeatGrid", () => ({
@@ -98,5 +106,44 @@ describe("SeatsPage duplicate reservation handling", () => {
     await screen.findByText("Seat has already been reserved by another user.");
     expect(navigateMock).not.toHaveBeenCalled();
     expect(screen.queryByText("Booking seat...")).not.toBeInTheDocument();
+  });
+
+  it("polls seats and reservations every 5 seconds", async () => {
+    vi.useFakeTimers();
+    render(<SeatsPage />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getSeats).toHaveBeenCalledTimes(1);
+    expect(getUserReservations).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(getSeats).toHaveBeenCalledTimes(2);
+    expect(getUserReservations).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it("updates reservation status counts after polling", async () => {
+    vi.useFakeTimers();
+    getUserReservations
+      .mockResolvedValueOnce([{ id: 1, status: "PENDING_PAYMENT", seat_number: "A1" }])
+      .mockResolvedValueOnce([{ id: 1, status: "EXPIRED", seat_number: "A1" }]);
+
+    render(<SeatsPage />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("Tabs 1/0/0")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
+    expect(screen.getByText("Tabs 0/0/1")).toBeInTheDocument();
+    vi.useRealTimers();
   });
 });

@@ -1,4 +1,5 @@
 import "./ReservationTable.css";
+import useCountdown from "../hooks/useCountdown";
 
 function formatDate(value) {
   if (!value) {
@@ -30,7 +31,28 @@ function getStatusClass(status) {
   return "reservation-badge-unknown";
 }
 
-function ReservationTable({ reservations, activeTab, onPay, onViewDetails }) {
+function getExpiresAt(reservation) {
+  return reservation?.expiresAt || reservation?.expires_at || null;
+}
+
+function RemainingTimeCell({ reservation }) {
+  const status = reservation?.status;
+  const { label } = useCountdown(getExpiresAt(reservation));
+
+  if (status !== "PENDING_PAYMENT") {
+    return <span>-</span>;
+  }
+
+  return <span>{label}</span>;
+}
+
+function ReservationTable({
+  reservations,
+  activeTab,
+  onPay,
+  onViewDetails,
+  paymentInProgressReservationId = null,
+}) {
   if (!reservations || reservations.length === 0) {
     return <p className="reservation-table-empty">No reservations found.</p>;
   }
@@ -42,6 +64,7 @@ function ReservationTable({ reservations, activeTab, onPay, onViewDetails }) {
           <col className="reservation-col-id" />
           <col className="reservation-col-seat" />
           <col className="reservation-col-status" />
+          <col className="reservation-col-remaining" />
           <col className="reservation-col-created" />
           <col className="reservation-col-action" />
         </colgroup>
@@ -50,6 +73,7 @@ function ReservationTable({ reservations, activeTab, onPay, onViewDetails }) {
             <th>Reservation ID</th>
             <th>Seat Number</th>
             <th>Status</th>
+            <th>Remaining Time</th>
             <th>Created At</th>
             <th>Action</th>
           </tr>
@@ -63,6 +87,9 @@ function ReservationTable({ reservations, activeTab, onPay, onViewDetails }) {
                 <span className={`reservation-badge ${getStatusClass(reservation.status)}`}>
                   {reservation.status || "-"}
                 </span>
+              </td>
+              <td>
+                <RemainingTimeCell reservation={reservation} />
               </td>
               <td>{formatDate(reservation.createdAt || reservation.created_at)}</td>
               <td>
@@ -78,8 +105,9 @@ function ReservationTable({ reservations, activeTab, onPay, onViewDetails }) {
                     type="button"
                     className="reservation-pay-btn"
                     onClick={() => onPay(reservation)}
+                    disabled={paymentInProgressReservationId === reservation.id}
                   >
-                    Pay Now
+                    {paymentInProgressReservationId === reservation.id ? "Processing..." : "Pay Now"}
                   </button>
                 ) : null}
                 {activeTab === "CONFIRMED" ? (

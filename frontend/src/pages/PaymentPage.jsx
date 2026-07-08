@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getReservationById } from "../api/reservationApi";
 import { completePayment, getPaymentById, initiatePayment } from "../api/paymentApi";
 import Navbar from "../components/Navbar";
 import { getApiErrorMessage } from "../utils/apiError";
+import usePaymentStatus from "../hooks/usePaymentStatus";
 
 function PaymentPage() {
   const location = useLocation();
@@ -21,6 +22,7 @@ function PaymentPage() {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
+  const [showRetry, setShowRetry] = useState(false);
   const paymentIdFromQuery = new URLSearchParams(location.search).get("paymentId");
   const paymentStorageKey = `paymentId:${reservationId}`;
 
@@ -75,50 +77,101 @@ function PaymentPage() {
     loadPayment();
   }, [paymentIdFromQuery, paymentStorageKey, reservationId]);
 
-  useEffect(() => {
-    if (payment?.status === "SUCCESS" && reservation?.status === "CONFIRMED") {
+  const refreshStatuses = useCallback(async () => {
+    if (!payment?.id) {
+      return null;
+    }
+    const [refreshedPayment, refreshedReservation] = await Promise.all([
+      getPaymentById(payment.id),
+      getReservationById(reservationId),
+    ]);
+    setPayment(refreshedPayment);
+    setReservation(refreshedReservation);
+    return {
+      payment: refreshedPayment,
+      reservation: refreshedReservation,
+    };
+  }, [payment?.id, reservationId]);
+
+  const { isPolling, startPolling } = usePaymentStatus({
+    intervalMs: 2000,
+    timeoutMs: 60000,
+    checkStatus: refreshStatuses,
+    onSuccess: ({ payment: confirmedPayment, reservation: confirmedReservation }) => {
+      setError("");
+      setInfoMessage("Payment completed successfully.");
+      setShowRetry(false);
       navigate("/success", {
         state: {
-          reservation,
-          payment,
+          reservation: confirmedReservation,
+          payment: confirmedPayment,
         },
       });
-    }
-  }, [navigate, payment, reservation]);
+
+      useEffect(() => {
+        if (payment?.status === "SUCCESS" && reservation?.status === "CONFIRMED") {
+          navigate("/success", {
+            state: {
+              reservation,
+              payment,
+            },
+          });
+        }
+      }, [navigate, payment, reservation]);
+    },
+    onFailed: () => {
+      setInfoMessage("");
+      setError("Payment Failed");
+      setShowRetry(true);
+    },
+    onTimeout: () => {
+      setInfoMessage("");
+      setError("Payment timeout. Please retry.");
+      setShowRetry(true);
+    },
+    onError: (err) => {
+      setInfoMessage("");
+      setError(getApiErrorMessage(err, "Failed to check payment status."));
+      setShowRetry(true);
+    },
+  });
 
   const handleCompletePayment = async () => {
-    if (paying || !payment?.id || payment?.status !== "PENDING") {
+    if (paying || isPolling || !payment?.id || payment?.status !== "PENDING") {
       return;
     }
 
     setError("");
-    setInfoMessage("");
+    setShowRetry(false);
+    setInfoMessage("Processing Payment...");
     setPaying(true);
 
     try {
-      const paymentResponse = await completePayment(payment.id, "SUCCESS");
-      const refreshedPayment = await getPaymentById(payment.id);
-      const refreshedReservation = await getReservationById(reservationId);
-
-      setPayment(refreshedPayment);
-      setReservation(refreshedReservation);
-
-      if (
-        paymentResponse?.status === "SUCCESS"
-        && paymentResponse?.reservationStatus === "CONFIRMED"
-      ) {
-        setInfoMessage("Payment completed successfully.");
-      } else {
-        setInfoMessage("Payment did not complete successfully.");
-      }
-
+      await completePayment(payment.id, "SUCCESS");
+      startPolling();
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to complete payment."));
+      setInfoMessage("");
+      setShowRetry(true);
     } finally {
       setPaying(false);
     }
   };
 
+  const handleRetry = async () => {
+    setError("");
+    setShowRetry(false);
+
+    if (payment?.status === "PENDING") {
+      setInfoMessage("Processing Payment...");
+      startPolling();
+      return;
+    }
+
+    setInfoMessage("");
+    setError("Payment Failed");
+    setShowRetry(true);
+  };
 
   return (
     <main>
@@ -212,10 +265,21 @@ function PaymentPage() {
               className="btn"
               type="button"
               onClick={handleCompletePayment}
-              disabled={paying || loadingPayment || !payment || payment.status !== "PENDING"}
+              disabled={paying || isPolling || loadingPayment || !payment || payment.status !== "PENDING"}
             >
-              {paying ? "Completing Payment..." : "Complete Payment"}
+              {paying ? "Completing Payment..." : isPolling ? "Processing Payment..." : "Complete Payment"}
             </button>
+
+            {showRetry ? (
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={handleRetry}
+                style={{ marginTop: 12 }}
+              >
+                Retry
+              </button>
+            ) : null}
 
             <button
               className="btn btn-secondary"

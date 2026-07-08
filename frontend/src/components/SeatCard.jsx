@@ -7,13 +7,14 @@ const STATUS_CLASS_MAP = {
   MAINTENANCE: "seat-card-maintenance",
 };
 
-function SeatCard({ seat, onSelect }) {
+function SeatCard({ seat, onSelect, disabled = false }) {
   const status = seat?.status || "UNKNOWN";
   const isAvailable = status === "AVAILABLE";
+  const isSelectable = isAvailable && !disabled;
   const className = STATUS_CLASS_MAP[status] || "seat-maintenance";
 
   const handleClick = () => {
-    if (isAvailable) {
+    if (isSelectable) {
       onSelect(seat);
     }
   };
@@ -23,7 +24,7 @@ function SeatCard({ seat, onSelect }) {
       type="button"
       className={`seat-card ${className}`}
       onClick={handleClick}
-      disabled={!isAvailable}
+      disabled={!isSelectable}
     >
       <div className="seat-card-number">{seat?.seatNumber || "-"}</div>
       <div className="seat-card-status">{status}</div>
@@ -32,4 +33,3 @@ function SeatCard({ seat, onSelect }) {
 }
 
 export default SeatCard;
-

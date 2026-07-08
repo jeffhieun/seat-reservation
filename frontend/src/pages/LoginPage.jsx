@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { login } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
 import { getApiErrorMessage } from "../utils/apiError";
@@ -73,6 +73,12 @@ function LoginPage() {
         <button className="btn" type="submit" disabled={loading}>
           {loading ? "Logging in..." : "Login"}
         </button>
+
+        <p>
+          Don&apos;t have an account?
+          {" "}
+          <Link to="/auth/register">Register</Link>
+        </p>
       </form>
     </main>
   );

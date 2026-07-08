@@ -92,6 +92,7 @@ class ReservationControllerIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.seat_id").value(firstSeatId))
+                .andExpect(jsonPath("$.expires_at").isNotEmpty())
                 .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"));
 
         mockMvc.perform(post("/api/reservations")

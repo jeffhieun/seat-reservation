@@ -9,7 +9,7 @@
 .reservation-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 780px;
+  min-width: 920px;
   table-layout: fixed;
 }
 
@@ -22,11 +22,15 @@
 }
 
 .reservation-col-status {
-  width: 190px;
+  width: 170px;
+}
+
+.reservation-col-remaining {
+  width: 130px;
 }
 
 .reservation-col-created {
-  width: 210px;
+  width: 190px;
 }
 
 .reservation-col-action {

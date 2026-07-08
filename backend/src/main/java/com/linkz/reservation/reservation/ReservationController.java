@@ -21,6 +21,7 @@ public class ReservationController {
     
     private final ReservationService reservationService;
     private final UserRepository userRepository;
+    private final ReservationProperties reservationProperties;
     
     @PostMapping
     @PreAuthorize("isAuthenticated()")
@@ -34,7 +35,7 @@ public class ReservationController {
         log.info("Reservation created: {} for user: {}", reservation.getId(), user.getId());
 
         return ResponseEntity.status(201)
-                .body(ReservationResponse.from(reservation));
+                .body(ReservationResponse.from(reservation, reservationProperties.getExpirationMinutes()));
     }
     
     @GetMapping
@@ -46,7 +47,7 @@ public class ReservationController {
 
         List<ReservationResponse> reservations = reservationService.getUserReservations(user.getId())
                 .stream()
-                .map(ReservationResponse::from)
+                .map(reservation -> ReservationResponse.from(reservation, reservationProperties.getExpirationMinutes()))
                 .toList();
 
         return ResponseEntity.ok(reservations);
@@ -60,7 +61,7 @@ public class ReservationController {
             Authentication authentication) {
         User user = findUser(authentication);
         Reservation reservation = reservationService.getReservationById(reservationId, user.getId());
-        return ResponseEntity.ok(ReservationResponse.from(reservation));
+        return ResponseEntity.ok(ReservationResponse.from(reservation, reservationProperties.getExpirationMinutes()));
     }
     
     @PostMapping("/{reservationId}/confirm")
@@ -74,7 +75,7 @@ public class ReservationController {
         Reservation confirmedReservation = reservationService.confirmReservation(reservationId, user.getId());
         log.info("Reservation {} confirmed by user {}", reservationId, user.getId());
 
-        return ResponseEntity.ok(ReservationResponse.from(confirmedReservation));
+        return ResponseEntity.ok(ReservationResponse.from(confirmedReservation, reservationProperties.getExpirationMinutes()));
     }
 
     @PostMapping("/{reservationId}/expire")
@@ -88,7 +89,7 @@ public class ReservationController {
         Reservation expiredReservation = reservationService.expireReservation(reservationId, user.getId());
         log.info("Reservation {} manually expired by user {}", reservationId, user.getId());
 
-        return ResponseEntity.ok(ReservationResponse.from(expiredReservation));
+        return ResponseEntity.ok(ReservationResponse.from(expiredReservation, reservationProperties.getExpirationMinutes()));
     }
 
     private User findUser(Authentication authentication) {

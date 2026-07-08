@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getSeats } from "../api/seatApi";
 import { getUserReservations, reserveSeat } from "../api/reservationApi";
@@ -6,8 +6,9 @@ import Navbar from "../components/Navbar";
 import SeatGrid from "../components/SeatGrid";
 import ReservationTabs from "../components/ReservationTabs";
 import ReservationTable from "../components/ReservationTable";
+import useReservationPolling from "../hooks/useReservationPolling";
 
-const AUTO_REFRESH_MS = 15000;
+const AUTO_REFRESH_MS = 5000;
 const ACTIVE_RESERVATION_CONFLICT_MESSAGE = "You already have an active reservation for this seat.";
 const SEAT_RESERVED_BY_OTHER_USER_MESSAGE = "Seat has already been reserved by another user.";
 
@@ -31,6 +32,10 @@ function getReservationConflictMessage(err) {
   return SEAT_RESERVED_BY_OTHER_USER_MESSAGE;
 }
 
+function areCollectionsEqual(previousData, nextData) {
+  return JSON.stringify(previousData) === JSON.stringify(nextData);
+}
+
 function SeatsPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,60 +47,84 @@ function SeatsPage() {
   const [reservations, setReservations] = useState([]);
   const [reservationsLoading, setReservationsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("PENDING_PAYMENT");
+  const [paymentInProgressReservationId, setPaymentInProgressReservationId] = useState(null);
 
-  const loadSeats = async () => {
-    setLoading(true);
-    setError("");
+  const loadSeats = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
 
     try {
       const data = await getSeats();
-      setSeats(Array.isArray(data) ? data : []);
+      const nextSeats = Array.isArray(data) ? data : [];
+      setSeats((previousSeats) => (areCollectionsEqual(previousSeats, nextSeats) ? previousSeats : nextSeats));
     } catch (err) {
-      const message = extractErrorMessage(err, "Failed to load seats.");
-      setError(message);
+      if (!silent) {
+        const message = extractErrorMessage(err, "Failed to load seats.");
+        setError(message);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
-  const loadReservations = async () => {
-    setReservationsLoading(true);
+  const loadReservations = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setReservationsLoading(true);
+    }
 
     try {
       const data = await getUserReservations();
-      setReservations(Array.isArray(data) ? data : []);
+      const nextReservations = Array.isArray(data) ? data : [];
+      setReservations((previousReservations) => (
+        areCollectionsEqual(previousReservations, nextReservations) ? previousReservations : nextReservations
+      ));
     } catch (err) {
-      const message = extractErrorMessage(err, "Failed to load reservations.");
-      setError(message);
-      setReservations([]);
+      if (!silent) {
+        const message = extractErrorMessage(err, "Failed to load reservations.");
+        setError(message);
+        setReservations([]);
+      }
     } finally {
-      setReservationsLoading(false);
+      if (!silent) {
+        setReservationsLoading(false);
+      }
     }
-  };
-
-  useEffect(() => {
-    loadSeats();
-    loadReservations();
   }, []);
 
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      loadSeats();
-      loadReservations();
-    }, AUTO_REFRESH_MS);
+  const refreshAll = useCallback(
+    ({ silent = false } = {}) => Promise.all([
+      loadSeats({ silent }),
+      loadReservations({ silent }),
+    ]),
+    [loadReservations, loadSeats]
+  );
 
-    return () => window.clearInterval(intervalId);
-  }, []);
+  useEffect(() => {
+    refreshAll();
+  }, [refreshAll]);
+
+  const { isPolling } = useReservationPolling({
+    enabled: true,
+    intervalMs: AUTO_REFRESH_MS,
+    pollFn: () => refreshAll({ silent: true }),
+  });
 
   useEffect(() => {
     if (location.state?.shouldRefreshReservations) {
-      loadSeats();
-      loadReservations();
+      refreshAll();
       navigate(location.pathname, { replace: true, state: null });
     }
-  }, [location.pathname, location.state, navigate]);
+  }, [location.pathname, location.state, navigate, refreshAll]);
 
   const handleSeatSelect = async (seat) => {
+    if (bookingSeatId !== null) {
+      return;
+    }
+
     const accepted = window.confirm(`Do you want to book seat ${seat.seatNumber}?`);
     if (!accepted) {
       return;
@@ -108,8 +137,7 @@ function SeatsPage() {
     try {
       const reservation = await reserveSeat(seat.id);
       setSuccessMessage(`Seat ${seat.seatNumber} reserved successfully.`);
-      await loadSeats();
-      await loadReservations();
+      await refreshAll({ silent: true });
       navigate(`/payment/${reservation.id}`, {
         state: { reservation },
       });
@@ -120,8 +148,7 @@ function SeatsPage() {
         : extractErrorMessage(err, "Failed to reserve seat.");
       setError(message);
       if (!isConflict) {
-        await loadSeats();
-        await loadReservations();
+        await refreshAll({ silent: true });
       }
     } finally {
       setBookingSeatId(null);
@@ -132,6 +159,7 @@ function SeatsPage() {
     if (!reservation?.id) {
       return;
     }
+    setPaymentInProgressReservationId(reservation.id);
 
     navigate(`/payment/${reservation.id}`, {
       state: { reservation },
@@ -163,18 +191,24 @@ function SeatsPage() {
         <section className="seats-block">
           <div className="page-header">
             <h2>Available Seats</h2>
-            <button className="btn" type="button" onClick={loadSeats} disabled={loading || bookingSeatId !== null}>
-              {loading ? "Refreshing..." : "Refresh"}
-            </button>
           </div>
 
           {successMessage ? <p className="success-text">{successMessage}</p> : null}
           {error ? <p className="error-text">{error}</p> : null}
+          {!loading && isPolling ? <p className="info-text">Refreshing data...</p> : null}
 
           {bookingSeatId !== null ? <p className="info-text">Booking seat...</p> : null}
 
           <div className="seats-grid-wrap">
-            {loading ? <p>Loading seats...</p> : <SeatGrid seats={seats} onSeatSelect={handleSeatSelect} />}
+            {loading ? (
+              <p>Loading seats...</p>
+            ) : (
+              <SeatGrid
+                seats={seats}
+                onSeatSelect={handleSeatSelect}
+                disabled={bookingSeatId !== null}
+              />
+            )}
           </div>
         </section>
 
@@ -198,6 +232,7 @@ function SeatsPage() {
                 activeTab={activeTab}
                 onPay={handlePayReservation}
                 onViewDetails={handleViewReservation}
+                paymentInProgressReservationId={paymentInProgressReservationId}
               />
             )}
           </div>
