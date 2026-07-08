@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getSeats } from "../api/seatApi";
 import { getUserReservations, reserveSeat } from "../api/reservationApi";
 import Navbar from "../components/Navbar";
@@ -7,11 +7,22 @@ import SeatGrid from "../components/SeatGrid";
 import ReservationTabs from "../components/ReservationTabs";
 import ReservationTable from "../components/ReservationTable";
 
+const AUTO_REFRESH_MS = 15000;
+
+function extractErrorMessage(err, fallbackMessage) {
+  return err?.response?.data?.message
+    || err?.response?.data?.error
+    || err?.message
+    || fallbackMessage;
+}
+
 function SeatsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [seats, setSeats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [bookingSeatId, setBookingSeatId] = useState(null);
   const [reservations, setReservations] = useState([]);
   const [reservationsLoading, setReservationsLoading] = useState(true);
@@ -25,7 +36,7 @@ function SeatsPage() {
       const data = await getSeats();
       setSeats(Array.isArray(data) ? data : []);
     } catch (err) {
-      const message = err?.response?.data?.error || err?.message || "Failed to load seats.";
+      const message = extractErrorMessage(err, "Failed to load seats.");
       setError(message);
     } finally {
       setLoading(false);
@@ -39,7 +50,7 @@ function SeatsPage() {
       const data = await getUserReservations();
       setReservations(Array.isArray(data) ? data : []);
     } catch (err) {
-      const message = err?.response?.data?.error || err?.message || "Failed to load reservations.";
+      const message = extractErrorMessage(err, "Failed to load reservations.");
       setError(message);
       setReservations([]);
     } finally {
@@ -52,6 +63,23 @@ function SeatsPage() {
     loadReservations();
   }, []);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      loadSeats();
+      loadReservations();
+    }, AUTO_REFRESH_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    if (location.state?.shouldRefreshReservations) {
+      loadSeats();
+      loadReservations();
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.pathname, location.state, navigate]);
+
   const handleSeatSelect = async (seat) => {
     const accepted = window.confirm(`Do you want to book seat ${seat.seatNumber}?`);
     if (!accepted) {
@@ -59,19 +87,23 @@ function SeatsPage() {
     }
 
     setError("");
+    setSuccessMessage("");
     setBookingSeatId(seat.id);
 
     try {
       const reservation = await reserveSeat(seat.id);
+      setSuccessMessage(`Seat ${seat.seatNumber} reserved successfully.`);
       await loadSeats();
       await loadReservations();
       navigate(`/payment/${reservation.id}`, {
         state: { reservation },
       });
     } catch (err) {
-      const message = err?.response?.status === 409
-        ? "Seat is no longer available."
-        : (err?.response?.data?.error || err?.message || "Failed to reserve seat.");
+      const isDuplicateReservation = err?.response?.status === 409
+        && err?.response?.data?.error === "DUPLICATE_RESERVATION";
+      const message = isDuplicateReservation
+        ? "You already reserved this seat."
+        : extractErrorMessage(err, "Failed to reserve seat.");
       setError(message);
       await loadSeats();
       await loadReservations();
@@ -88,6 +120,13 @@ function SeatsPage() {
     navigate(`/payment/${reservation.id}`, {
       state: { reservation },
     });
+  };
+
+  const handleViewReservation = (reservation) => {
+    if (!reservation?.id) {
+      return;
+    }
+    navigate(`/reservations/${reservation.id}`);
   };
 
   const pendingReservations = reservations.filter((reservation) => reservation?.status === "PENDING_PAYMENT");
@@ -113,6 +152,7 @@ function SeatsPage() {
             </button>
           </div>
 
+          {successMessage ? <p className="success-text">{successMessage}</p> : null}
           {error ? <p className="error-text">{error}</p> : null}
 
           {bookingSeatId !== null ? <p className="info-text">Booking seat...</p> : null}
@@ -141,6 +181,7 @@ function SeatsPage() {
                 reservations={filteredReservations}
                 activeTab={activeTab}
                 onPay={handlePayReservation}
+                onViewDetails={handleViewReservation}
               />
             )}
           </div>
@@ -151,4 +192,3 @@ function SeatsPage() {
 }
 
 export default SeatsPage;
-

@@ -1,5 +1,10 @@
 package com.linkz.reservation.commons.exception;
 
+import com.linkz.reservation.reservation.DuplicateReservationException;
+import com.linkz.reservation.reservation.InvalidReservationTransitionException;
+import com.linkz.reservation.reservation.ReservationErrorResponse;
+import com.linkz.reservation.reservation.ReservationNotFoundException;
+import com.linkz.reservation.reservation.SeatUnavailableException;
 import io.jsonwebtoken.JwtException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
@@ -51,6 +56,34 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(buildResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(DuplicateReservationException.class)
+    public ResponseEntity<ReservationErrorResponse> handleDuplicateReservationException(
+            DuplicateReservationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ReservationErrorResponse("DUPLICATE_RESERVATION", ex.getMessage()));
+    }
+
+    @ExceptionHandler(SeatUnavailableException.class)
+    public ResponseEntity<ReservationErrorResponse> handleSeatUnavailableException(
+            SeatUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ReservationErrorResponse("SEAT_UNAVAILABLE", ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidReservationTransitionException.class)
+    public ResponseEntity<ReservationErrorResponse> handleInvalidReservationTransitionException(
+            InvalidReservationTransitionException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ReservationErrorResponse("INVALID_RESERVATION_TRANSITION", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ReservationNotFoundException.class)
+    public ResponseEntity<ReservationErrorResponse> handleReservationNotFoundException(
+            ReservationNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ReservationErrorResponse("RESERVATION_NOT_FOUND", ex.getMessage()));
     }
 
     @ExceptionHandler(JwtException.class)

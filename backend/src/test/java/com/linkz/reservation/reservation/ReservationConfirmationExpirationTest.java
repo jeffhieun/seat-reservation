@@ -131,8 +131,8 @@ public class ReservationConfirmationExpirationTest {
         
         // When & Then
         assertThatThrownBy(() -> reservationService.confirmReservation(reservation.getId()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid reservation status");
+                .isInstanceOf(InvalidReservationTransitionException.class)
+                .hasMessageContaining("can only be confirmed");
     }
     
     @Test
@@ -143,13 +143,10 @@ public class ReservationConfirmationExpirationTest {
         Reservation reservation = reservationService.reserveSeat(testUser.getId(), testSeat.getId());
         reservationService.confirmReservation(reservation.getId());
         
-        // When
-        reservationService.expireReservation(reservation);
-        
-        // Then
-        Reservation result = reservationService.getReservationById(reservation.getId());
-        assertThat(result.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
-        assertThat(result.getExpiredAt()).isNull();
+        // When & Then
+        assertThatThrownBy(() -> reservationService.expireReservation(reservation.getId()))
+                .isInstanceOf(InvalidReservationTransitionException.class)
+                .hasMessageContaining("can only be expired");
     }
     
     // ================== FR-7: Reservation Expiration Tests ==================
@@ -163,7 +160,7 @@ public class ReservationConfirmationExpirationTest {
         LocalDateTime beforeExpiration = LocalDateTime.now();
         
         // When
-        reservationService.expireReservation(reservation);
+        reservationService.expireReservation(reservation.getId());
         
         // Then
         Reservation expiredReservation = reservationService.getReservationById(reservation.getId());
@@ -181,9 +178,26 @@ public class ReservationConfirmationExpirationTest {
         assertThat(testSeat.getStatus()).isEqualTo(SeatStatus.PENDING_PAYMENT);
         
         // When
-        reservationService.expireReservation(reservation);
+        reservationService.expireReservation(reservation.getId());
         
         // Then
+        Seat releasedSeat = seatRepository.findById(testSeat.getId()).orElseThrow();
+        assertThat(releasedSeat.getStatus()).isEqualTo(SeatStatus.AVAILABLE);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("FR-7.2b: Expire by ID should work even when entity is detached")
+    void shouldExpireByIdWithoutLazyInitializationException() {
+        Reservation reservation = reservationService.reserveSeat(testUser.getId(), testSeat.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThatCode(() -> reservationService.expireReservation(reservation.getId()))
+                .doesNotThrowAnyException();
+
+        Reservation expiredReservation = reservationService.getReservationById(reservation.getId());
+        assertThat(expiredReservation.getStatus()).isEqualTo(ReservationStatus.EXPIRED);
         Seat releasedSeat = seatRepository.findById(testSeat.getId()).orElseThrow();
         assertThat(releasedSeat.getStatus()).isEqualTo(SeatStatus.AVAILABLE);
     }
@@ -204,10 +218,10 @@ public class ReservationConfirmationExpirationTest {
         Reservation reservation2 = reservationService.reserveSeat(testUser.getId(), seat2.getId());
         
         // When - Call the method to verify it works (won't return results unless they're actually expired)
-        List<Reservation> expiredReservations = reservationService.getExpiredReservations();
+        List<Long> expiredReservationIds = reservationService.getExpiredReservationIds();
         
         // Then - Verify the method executes without error
-        assertThat(expiredReservations).isNotNull();
+        assertThat(expiredReservationIds).isNotNull();
         // Note: The actual expiration check depends on the 1-minute timeout which hasn't passed yet
         // in this test, so we just verify the method returns a list
     }
@@ -218,13 +232,13 @@ public class ReservationConfirmationExpirationTest {
     void shouldNotExpireAlreadyExpiredReservation() {
         // Given
         Reservation reservation = reservationService.reserveSeat(testUser.getId(), testSeat.getId());
-        reservationService.expireReservation(reservation);
+        reservationService.expireReservation(reservation.getId());
         LocalDateTime firstExpiredAt = reservationService.getReservationById(reservation.getId()).getExpiredAt();
         
-        // When - Try to expire again
-        reservationService.expireReservation(reservationService.getReservationById(reservation.getId()));
-        
-        // Then
+        // When & Then - Try to expire again
+        assertThatThrownBy(() -> reservationService.expireReservation(reservation.getId()))
+                .isInstanceOf(InvalidReservationTransitionException.class);
+
         Reservation stillExpired = reservationService.getReservationById(reservation.getId());
         assertThat(stillExpired.getStatus()).isEqualTo(ReservationStatus.EXPIRED);
         assertThat(stillExpired.getExpiredAt()).isEqualTo(firstExpiredAt);

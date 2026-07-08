@@ -3,6 +3,7 @@ import LoginPage from "./pages/LoginPage";
 import SeatsPage from "./pages/SeatsPage";
 import PaymentPage from "./pages/PaymentPage";
 import SuccessPage from "./pages/SuccessPage";
+import ReservationPage from "./pages/ReservationPage";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -23,6 +24,14 @@ function App() {
         element={(
           <ProtectedRoute>
             <SeatsPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/reservations/:reservationId"
+        element={(
+          <ProtectedRoute>
+            <ReservationPage />
           </ProtectedRoute>
         )}
       />
@@ -48,4 +57,3 @@ function App() {
 }
 
 export default App;
-

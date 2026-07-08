@@ -110,6 +110,11 @@ input {
   margin: 0 0 12px;
 }
 
+.success-text {
+  color: #166534;
+  margin: 0 0 12px;
+}
+
 .empty-state {
   color: #666;
 }
@@ -202,4 +207,3 @@ input {
     align-items: flex-start;
   }
 }
-

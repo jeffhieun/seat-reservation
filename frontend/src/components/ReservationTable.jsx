@@ -17,9 +17,22 @@ function getSeatNumber(reservation) {
   return reservation?.seatNumber || reservation?.seat_number || "-";
 }
 
-function ReservationTable({ reservations, activeTab, onPay }) {
+function getStatusClass(status) {
+  if (status === "PENDING_PAYMENT") {
+    return "reservation-badge-pending";
+  }
+  if (status === "CONFIRMED") {
+    return "reservation-badge-confirmed";
+  }
+  if (status === "EXPIRED") {
+    return "reservation-badge-expired";
+  }
+  return "reservation-badge-unknown";
+}
+
+function ReservationTable({ reservations, activeTab, onPay, onViewDetails }) {
   if (!reservations || reservations.length === 0) {
-    return <p className="reservation-table-empty">No reservations found</p>;
+    return <p className="reservation-table-empty">No reservations found.</p>;
   }
 
   return (
@@ -46,9 +59,20 @@ function ReservationTable({ reservations, activeTab, onPay }) {
             <tr key={reservation.id}>
               <td>{reservation.id}</td>
               <td>{getSeatNumber(reservation)}</td>
-              <td>{reservation.status || "-"}</td>
+              <td>
+                <span className={`reservation-badge ${getStatusClass(reservation.status)}`}>
+                  {reservation.status || "-"}
+                </span>
+              </td>
               <td>{formatDate(reservation.createdAt || reservation.created_at)}</td>
               <td>
+                <button
+                  type="button"
+                  className="reservation-view-btn"
+                  onClick={() => onViewDetails(reservation)}
+                >
+                  View
+                </button>
                 {activeTab === "PENDING_PAYMENT" ? (
                   <button
                     type="button"
@@ -74,4 +98,3 @@ function ReservationTable({ reservations, activeTab, onPay }) {
 }
 
 export default ReservationTable;
-

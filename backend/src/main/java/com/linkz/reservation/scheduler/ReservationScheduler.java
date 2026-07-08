@@ -1,7 +1,5 @@
 package com.linkz.reservation.scheduler;
 
-import com.linkz.reservation.reservation.Reservation;
-import com.linkz.reservation.reservation.ReservationProperties;
 import com.linkz.reservation.reservation.ReservationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,30 +14,28 @@ import java.util.List;
 public class ReservationScheduler {
     
     private final ReservationService reservationService;
-    private final ReservationProperties reservationProperties;
     
     @Scheduled(fixedDelayString = "${reservation.scheduler-interval-seconds:60}000")
     public void releaseExpiredReservations() {
         try {
-            List<Reservation> expiredReservations = reservationService.getExpiredReservations();
+            List<Long> expiredReservationIds = reservationService.getExpiredReservationIds();
             
-            if (!expiredReservations.isEmpty()) {
-                log.info("Found {} expired reservations to release", expiredReservations.size());
+            if (!expiredReservationIds.isEmpty()) {
+                log.info("Found {} expired reservations to release", expiredReservationIds.size());
                 
-                expiredReservations.forEach(reservation -> {
+                expiredReservationIds.forEach(reservationId -> {
                     try {
-                        reservationService.expireReservation(reservation);
-                        log.debug("Released seat for expired reservation: {}", reservation.getId());
+                        reservationService.expireReservation(reservationId);
+                        log.debug("Released seat for expired reservation: {}", reservationId);
                     } catch (Exception e) {
-                        log.error("Error releasing reservation {}: {}", reservation.getId(), e.getMessage(), e);
+                        log.error("Error releasing reservation {}: {}", reservationId, e.getMessage(), e);
                     }
                 });
                 
-                log.info("Successfully processed {} expired reservations", expiredReservations.size());
+                log.info("Finished processing {} expired reservations", expiredReservationIds.size());
             }
         } catch (Exception e) {
             log.error("Error in expiration scheduler", e);
         }
     }
 }
-
