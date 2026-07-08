@@ -1,37 +1,8 @@
 # Implementation Audit Report — Seat Reservation Platform
 
 
-## REST API
-**Status:** 🟡 Partial
 
-**Evidence:** Endpoints for `/api/seats`, `/api/reservations`, `/api/payments`, `/api/auth/login`, `/api/auth/register`; OpenAPI docs (`frontend/api-docs.yaml`, `frontend/api-docs.json`)
 
-**Missing implementation:**
-- `GET /api/auth/me` missing.
-- Requested `POST /api/payments/{id}` shape missing.
-- Error payloads are inconsistent across controllers.
-
-**Recommended improvements:**
-- Add missing endpoints.
-- Normalize error models and status handling.
-
-**Priority:** High
-
-## Liquibase
-**Status:** 🟡 Partial
-
-**Evidence:** Migrations include `users`, `seats`, `reservations`, `payments`, `webhook_events`, `audit_events` with FKs/indexes/defaults/constraints
-
-**Missing implementation / risks:**
-- Sequence strategy mismatch (`BIGSERIAL` tables + entity sequence generators).
-- Duplicate `users_seq` creation in `000-sequences.xml` and `001-user.xml`.
-
-**Recommended improvements:**
-- Align Liquibase PK strategy with Hibernate sequence usage.
-- Remove duplicate sequence creation.
-- Validate migrations in PostgreSQL integration run.
-
-**Priority:** High
 
 ## Hibernate
 **Status:** 🟡 Partial

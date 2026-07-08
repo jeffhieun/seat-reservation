@@ -6,6 +6,11 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
 
     <changeSet id="000-create-sequences" author="dev">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="users_seq"/>
+            </not>
+        </preConditions>
         <createSequence sequenceName="users_seq" startValue="1" incrementBy="50" />
         <createSequence sequenceName="seats_seq" startValue="1" incrementBy="50" />
         <createSequence sequenceName="reservations_seq" startValue="1" incrementBy="50" />
@@ -15,4 +20,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

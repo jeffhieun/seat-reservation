@@ -7,7 +7,7 @@
 
     <changeSet id="001-create-users-table" author="dev">
         <createTable tableName="users">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGINT" defaultValueComputed="nextval('users_seq')">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="email" type="VARCHAR(255)">
@@ -27,10 +27,6 @@
         <createIndex indexName="idx_users_email" tableName="users" unique="true">
             <column name="email"/>
         </createIndex>
-    </changeSet>
-
-    <changeSet id="001-create-users-sequence" author="dev">
-        <createSequence sequenceName="users_seq" startValue="1" incrementBy="50" />
     </changeSet>
 
     <changeSet id="002-seed-demo-user" author="dev">
@@ -55,4 +51,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

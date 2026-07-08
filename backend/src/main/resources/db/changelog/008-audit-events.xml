@@ -7,7 +7,7 @@
 
     <changeSet id="008-create-audit-events-table" author="dev">
         <createTable tableName="audit_events">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGINT" defaultValueComputed="nextval('audit_events_seq')">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="event_type" type="VARCHAR(100)">
@@ -39,4 +39,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

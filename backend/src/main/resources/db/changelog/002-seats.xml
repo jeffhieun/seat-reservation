@@ -7,7 +7,7 @@
 
     <changeSet id="002-create-seats-table" author="dev">
         <createTable tableName="seats">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGINT" defaultValueComputed="nextval('seats_seq')">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="seat_number" type="VARCHAR(10)">
@@ -55,4 +55,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

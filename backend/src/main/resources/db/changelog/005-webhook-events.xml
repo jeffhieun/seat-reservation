@@ -7,7 +7,7 @@
 
     <changeSet id="005-create-webhook-events-table" author="dev">
         <createTable tableName="webhook_events">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGINT" defaultValueComputed="nextval('webhook_events_seq')">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="event_id" type="VARCHAR(255)">
@@ -24,4 +24,3 @@
     </changeSet>
 
 </databaseChangeLog>
-

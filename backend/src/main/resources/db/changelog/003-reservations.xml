@@ -7,7 +7,7 @@
 
     <changeSet id="003-create-reservations-table" author="dev">
         <createTable tableName="reservations">
-            <column name="id" type="BIGSERIAL" autoIncrement="true">
+            <column name="id" type="BIGINT" defaultValueComputed="nextval('reservations_seq')">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
             <column name="user_id" type="BIGINT">
@@ -42,4 +42,3 @@
     </changeSet>
 
 </databaseChangeLog>
-
