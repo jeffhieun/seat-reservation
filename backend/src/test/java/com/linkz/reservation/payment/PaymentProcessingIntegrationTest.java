@@ -274,6 +274,30 @@ class PaymentProcessingIntegrationTest {
     }
 
     @Test
+    void webhookFailureShouldExpireReservationAndReleaseSeat() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+        ReservationResponse reservation = reserveSeat(ownerToken, secondSeatId);
+        PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
+
+        mockMvc.perform(post("/api/webhooks/payment-failure")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "eventId", "evt-failure-" + payment.id(),
+                                "providerReference", payment.providerReference()
+                        ))))
+                .andExpect(status().isOk());
+
+        Payment paymentAfterWebhook = paymentRepository.findById(payment.id()).orElseThrow();
+        assertThat(paymentAfterWebhook.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(reservationRepository.findById(reservation.id())).get()
+                .extracting(res -> res.getStatus().name())
+                .isEqualTo(ReservationStatus.EXPIRED.name());
+        assertThat(seatRepository.findById(secondSeatId)).get()
+                .extracting(Seat::getStatus)
+                .isEqualTo(SeatStatus.AVAILABLE);
+    }
+
+    @Test
     void completePaymentShouldRejectInvalidResult() throws Exception {
         String ownerToken = login("payer1@test.com", "password123");
         ReservationResponse reservation = reserveSeat(ownerToken);

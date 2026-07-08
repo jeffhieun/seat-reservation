@@ -72,11 +72,7 @@ public class PaymentService {
     
     @Transactional
     public Payment markPaymentFailed(String providerReference) {
-        Payment payment = paymentRepository.findByProviderReference(providerReference)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
-        
-        payment.setStatus(PaymentStatus.FAILED);
-        return paymentRepository.save(payment);
+        return failPaymentByProviderReference(providerReference);
     }
     
     @Transactional(readOnly = true)
@@ -102,6 +98,21 @@ public class PaymentService {
                 .orElseThrow(() -> new EntityNotFoundException("Payment not found"));
     }
 
+    @Transactional(readOnly = true)
+    public Payment getPaymentByProviderReference(String providerReference) {
+        return paymentRepository.findByProviderReference(providerReference)
+                .orElseThrow(() -> new EntityNotFoundException("Payment not found"));
+    }
+
+    @Transactional
+    public Payment failPaymentByProviderReference(String providerReference) {
+        Payment payment = getPaymentByProviderReference(providerReference);
+        return failPaymentInternal(
+                payment,
+                () -> reservationService.expireReservation(payment.getReservation().getId())
+        );
+    }
+
     @Transactional
     public Payment completePayment(Long paymentId, Long userId, String result) {
         Payment payment = getPaymentByIdForUser(paymentId, userId);
@@ -124,14 +135,29 @@ public class PaymentService {
                 return payment;
             }
             case "FAILED" -> {
-                reservationService.expireReservation(payment.getReservation().getId(), userId);
-                payment.setStatus(PaymentStatus.FAILED);
-                paymentRepository.saveAndFlush(payment);
-                auditService.recordPaymentFailure(payment);
-                return payment;
+                return failPaymentInternal(
+                        payment,
+                        () -> reservationService.expireReservation(payment.getReservation().getId(), userId)
+                );
             }
             default -> throw new IllegalArgumentException("Invalid payment result");
         }
+    }
+
+    private Payment failPaymentInternal(Payment payment, Runnable expireReservationAction) {
+        if (PaymentStatus.SUCCESS.equals(payment.getStatus())) {
+            throw new PaymentConflictException("Payment has already been completed");
+        }
+
+        if (PaymentStatus.FAILED.equals(payment.getStatus())) {
+            return payment;
+        }
+
+        expireReservationAction.run();
+        payment.setStatus(PaymentStatus.FAILED);
+        paymentRepository.saveAndFlush(payment);
+        auditService.recordPaymentFailure(payment);
+        return payment;
     }
     
     private String generateProviderReference() {

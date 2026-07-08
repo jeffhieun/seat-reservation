@@ -1,151 +1,199 @@
-````md
 # Seat Reservation Platform
 
-## Overview
+## Project Overview
 
-A full-stack seat reservation platform.
+Seat Reservation Platform is a full-stack application for authenticated seat booking with payment processing, reservation expiration, and concurrency-safe state transitions.
 
-The project includes:
+## Architecture
 
-- Backend API: Java 21 + Spring Boot
-- Frontend application: Node.js 20+
-- Database: PostgreSQL
-- Container runtime: Podman
+```mermaid
+flowchart LR
+  FE[React + Vite Frontend] --> API[Spring Boot REST API]
+  API --> DB[(PostgreSQL)]
+  API --> LB[Liquibase Migrations]
+  API --> SCH[Reservation Scheduler]
+  WEBHOOK[Payment Webhook Provider] --> API
+```
 
-The application supports:
+## Technology Stack
 
-- User authentication
-- Seat reservation management
-- REST API
-- Swagger API documentation
-- Containerized deployment
+| Layer | Technology |
+|---|---|
+| Backend | Java 21, Spring Boot 3.3, Spring Security, Spring Data JPA, Hibernate |
+| Database | PostgreSQL, Liquibase |
+| Frontend | React, Vite, React Router, Axios |
+| Testing | JUnit 5, MockMvc, Vitest, React Testing Library |
+| Infrastructure | Podman, Podman Compose |
 
----
+## Features
 
-# Quick Start
+- JWT authentication (register, login, refresh token, `/api/auth/me`)
+- Seat availability listing
+- Reservation lifecycle (pending payment, confirmed, expired)
+- Payment initiation, completion, idempotent initiation
+- Webhook-driven payment status updates
+- Reservation expiration scheduler
+- Concurrency protections (pessimistic + optimistic locking)
+- Standardized API error payload
 
-From the project root directory:
+## Authentication Flow
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant FE as Frontend
+  participant API as Auth API
+  U->>FE: Login/Register
+  FE->>API: /api/auth/login or /api/auth/register
+  API-->>FE: access token + refresh token
+  FE->>API: Authorized API requests
+  API-->>FE: 401 on expired access token
+  FE->>API: /api/auth/refresh
+  API-->>FE: new access token + refresh token
+```
+
+## Reservation Flow
+
+```mermaid
+sequenceDiagram
+  participant FE as Frontend
+  participant API as Reservation API
+  participant DB as Database
+  FE->>API: POST /api/reservations
+  API->>DB: lock seat + create reservation
+  API-->>FE: ReservationResponse (PENDING_PAYMENT)
+```
+
+## Payment Flow
+
+```mermaid
+sequenceDiagram
+  participant FE as Frontend
+  participant API as Payment API
+  participant WH as Webhook
+  FE->>API: POST /api/payments?reservationId=...
+  API-->>FE: PaymentResponse (PENDING)
+  FE->>API: GET /api/payments/{id} (polling)
+  WH->>API: /api/webhooks/payment-success or payment-failure
+  API->>API: update payment + reservation state
+  API-->>FE: SUCCESS+CONFIRMED or FAILED
+```
+
+## Expiration Scheduler
+
+- `ReservationScheduler` periodically scans for expired `PENDING_PAYMENT` reservations.
+- Expired reservations are marked `EXPIRED` and seats are released back to `AVAILABLE`.
+
+## Concurrency Handling
+
+- Pessimistic lock: `SeatRepository.findByIdForUpdate`
+- Optimistic lock: `@Version` on Seat/Reservation/Payment
+- Conflict responses mapped to HTTP `409`
+
+## Optimistic Locking
+
+`@Version` columns are maintained via Liquibase (`010-add-version-columns.xml`) and verified by integration tests.
+
+## Database Schema
+
+Core tables:
+
+- `users`
+- `seats`
+- `reservations`
+- `payments`
+- `webhook_events`
+- `audit_events`
+
+### ER Diagram
+
+```mermaid
+erDiagram
+  USERS ||--o{ RESERVATIONS : creates
+  SEATS ||--o{ RESERVATIONS : assigned_to
+  RESERVATIONS ||--o{ PAYMENTS : paid_by
+  PAYMENTS ||--o{ AUDIT_EVENTS : tracked_in
+  RESERVATIONS ||--o{ AUDIT_EVENTS : tracked_in
+  WEBHOOK_EVENTS ||--o{ AUDIT_EVENTS : references
+```
+
+## API Documentation
+
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- Static docs:
+  - `frontend/api-docs.yaml`
+  - `frontend/api-docs.json`
+
+## Project Structure
+
+```text
+seat-reservation/
+├── backend/
+│   ├── src/main/java/com/linkz/reservation/
+│   ├── src/main/resources/db/changelog/
+│   └── run-backend.sh
+├── frontend/
+│   ├── src/
+│   ├── api-docs.yaml
+│   ├── api-docs.json
+│   └── run-frontend.sh
+├── run-all.sh
+└── .github/workflows/build.yml
+```
+
+## Running Locally
 
 ```bash
 chmod +x run-all.sh
 ./run-all.sh
-````
-
-The startup script will automatically:
-
-1. Check Podman machine status
-2. Start Podman machine if it is not running
-3. Remove existing containers
-4. Build backend container
-5. Start backend service
-6. Build frontend container
-7. Start frontend service
-
-After startup, the application is ready.
-
----
-
-# Application URLs
-
-| Service              | URL                                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------------ |
-| Frontend Application | [http://localhost:3000](http://localhost:3000)                                             |
-| Backend API          | [http://localhost:8080](http://localhost:8080)                                             |
-| Swagger UI           | [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html) |
-| Health Check         | [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)             |
-
----
-
-# Authentication Test Accounts
-
-The application provides pre-configured test accounts.
-
-Use these accounts to test the login system.
-
-| User          | Email                                       | Password    |
-| ------------- | ------------------------------------------- | ----------- |
-| Test User 001 | [test001@test.com](mailto:test001@test.com) | password123 |
-| Test User 002 | [test002@test.com](mailto:test002@test.com) | password123 |
-| Test User 003 | [test003@test.com](mailto:test003@test.com) | password123 |
-| Test User 004 | [test004@test.com](mailto:test004@test.com) | password123 |
-
-Example login:
-
-```text
-Email:
-test001@test.com
-
-Password:
-password123
 ```
 
----
+## Running Tests
 
-# API Testing
-
-## Swagger
-
-Open:
-
-```text
-http://localhost:8080/swagger-ui/index.html
-```
-
-You can test:
-
-* Authentication API
-* User API
-* Seat reservation API
-
----
-
-# Container Logs
-
-## Backend Logs
+Backend:
 
 ```bash
-podman logs seat-reservation-backend
+cd backend
+./gradlew --no-daemon clean test
 ```
 
-## Frontend Logs
+Frontend:
 
 ```bash
-podman logs seat-reservation-frontend
+cd frontend
+npm test -- --run
+npm run build
 ```
 
----
+## Running with Podman
 
-# Project Structure
-
-```text
-seat-reservation/
-
-├── run-all.sh
-
-├── backend/
-│   ├── run-backend.sh
-│   └── src/
-
-├── frontend/
-│   ├── run-frontend.sh
-│   └── src/
-```
-
----
-
-# Troubleshooting
-
-Restart everything:
+Backend script:
 
 ```bash
-./run-all.sh
+cd backend
+./run-backend.sh --with-tests --with-build --verify
 ```
 
-Check application health:
+Frontend script:
 
 ```bash
-curl http://localhost:8080/actuator/health
+cd frontend
+./run-frontend.sh --with-tests --with-build --background --verify
 ```
 
-```
-```
+## Known Limitations
+
+- Development payment simulation endpoints are profile-gated (`dev` only).
+- Webhook behavior still assumes event payload shape `{ eventId, providerReference }`.
+- UI screenshots are not committed in this repository yet.
+
+## Future Improvements
+
+- Add CI matrix for multiple JDK/Node versions.
+- Publish OpenAPI docs automatically from CI.
+- Add dedicated end-to-end browser tests.
+
+## Screenshots
+
+Screenshots are not included yet. Add them under `docs/screenshots/` if needed.
+

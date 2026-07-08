@@ -142,7 +142,7 @@ main() {
   "${BACKEND_SCRIPT}" --with-tests --with-build --verify
 
   log_info "Starting frontend workflow..."
-  "${FRONTEND_SCRIPT}" --with-tests --background --verify
+  "${FRONTEND_SCRIPT}" --with-tests --with-build --background --verify
 
   print_summary
   SUCCESS=true

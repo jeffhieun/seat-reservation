@@ -1,376 +1,492 @@
----
-openapi: 3.0.1
+openapi: 3.0.3
 info:
   title: Seat Reservation API
-  description: API for managing seat reservations
-  contact:
-    name: Linkz
-    url: https://linkz.com
-  license:
-    name: Apache 2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0.html
   version: 1.0.0
+  description: API for managing authentication, seats, reservations, payments, and webhooks.
 servers:
-- url: http://localhost:8080
-  description: Generated server url
+  - url: http://localhost:8080
 security:
-- bearer-jwt: []
+  - bearer-jwt: []
 paths:
-  "/api/webhooks/payment-success":
+  /api/auth/register:
     post:
-      tags:
-      - webhook-controller
-      operationId: handlePaymentSuccess
-      parameters:
-      - name: X-Signature
-        in: header
-        required: false
-        schema:
-          type: string
+      tags: [auth-controller]
+      operationId: register
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties:
-                type: object
-        required: true
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
       responses:
-        '200':
-          description: OK
-  "/api/webhooks/payment-failure":
+        '201':
+          description: User registered successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/auth/login:
     post:
-      tags:
-      - webhook-controller
-      operationId: handlePaymentFailure
-      parameters:
-      - name: X-Signature
-        in: header
-        required: false
-        schema:
-          type: string
+      tags: [auth-controller]
+      operationId: login
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties:
-                type: object
-        required: true
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: OK
-  "/api/reservations":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/auth/refresh:
+    post:
+      tags: [auth-controller]
+      operationId: refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/auth/me:
     get:
-      tags:
-      - reservation-controller
-      operationId: getUserReservations
-      responses:
-        '200':
-          description: OK
-          content:
-            "*/*":
-              schema:
-                type: array
-                items:
-                  "$ref": "#/components/schemas/ReservationResponse"
-    post:
-      tags:
-      - reservation-controller
-      operationId: reserveSeat
-      requestBody:
-        content:
-          application/json:
-            schema:
-              "$ref": "#/components/schemas/ReservationRequest"
-        required: true
-      responses:
-        '200':
-          description: OK
-          content:
-            "*/*":
-              schema:
-                type: object
-  "/api/reservations/{reservationId}/expire":
-    post:
-      tags:
-      - reservation-controller
-      operationId: manuallyExpireReservation
-      parameters:
-      - name: reservationId
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
-      responses:
-        '200':
-          description: OK
-          content:
-            "*/*":
-              schema:
-                type: object
-  "/api/reservations/{reservationId}/confirm":
-    post:
-      tags:
-      - reservation-controller
-      operationId: confirmReservation
-      parameters:
-      - name: reservationId
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
-      responses:
-        '200':
-          description: OK
-          content:
-            "*/*":
-              schema:
-                type: object
-  "/api/payments":
-    post:
-      tags:
-      - payment-controller
-      operationId: initiatePayment
-      parameters:
-      - name: reservationId
-        in: query
-        required: true
-        schema:
-          type: integer
-          format: int64
-      responses:
-        '200':
-          description: OK
-          content:
-            "*/*":
-              schema:
-                type: object
-  "/api/auth/register":
-    post:
-      tags:
-      - auth-controller
-      operationId: register_1
-      parameters:
-      - name: email
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: password
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              "$ref": "#/components/schemas/LoginRequest"
-        required: true
-      responses:
-        '200':
-          description: OK
-          content:
-            "*/*":
-              schema:
-                type: object
-  "/api/auth/login":
-    post:
-      tags:
-      - auth-controller
-      operationId: login_1
-      parameters:
-      - name: email
-        in: query
-        required: true
-        schema:
-          type: string
-      - name: password
-        in: query
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              "$ref": "#/components/schemas/LoginRequest"
-        required: true
-      responses:
-        '200':
-          description: OK
-          content:
-            "*/*":
-              schema:
-                type: object
-  "/api/auth/me":
-    get:
-      tags:
-      - auth-controller
+      tags: [auth-controller]
       operationId: me
       responses:
         '200':
-          description: OK
+          description: Current authenticated user
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/UserProfileResponse"
-  "/api/seats":
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/seats:
     get:
-      tags:
-      - seat-controller
+      tags: [seat-controller]
       operationId: getSeats
       responses:
         '200':
-          description: OK
+          description: Available seats
           content:
-            "*/*":
+            application/json:
               schema:
                 type: array
                 items:
-                  "$ref": "#/components/schemas/SeatResponse"
-  "/api/reservations/{reservationId}":
+                  $ref: '#/components/schemas/SeatResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reservations:
     get:
-      tags:
-      - reservation-controller
-      operationId: getReservationDetails
-      parameters:
-      - name: reservationId
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
+      tags: [reservation-controller]
+      operationId: getUserReservations
       responses:
         '200':
-          description: OK
+          description: Authenticated user reservations
           content:
-            "*/*":
+            application/json:
               schema:
-                type: object
-  "/api/payments/{paymentId}":
-    get:
-      tags:
-      - payment-controller
-      operationId: getPayment
-      parameters:
-      - name: paymentId
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
-      responses:
-        '200':
-          description: OK
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReservationResponse'
+        '401':
+          description: Unauthorized
           content:
-            "*/*":
+            application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/ErrorResponse'
     post:
-      tags:
-      - payment-controller
-      operationId: completePayment
-      parameters:
-      - name: paymentId
-        in: path
-        required: true
-        schema:
-          type: integer
-          format: int64
+      tags: [reservation-controller]
+      operationId: reserveSeat
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              "$ref": "#/components/schemas/PaymentCompletionRequest"
-        required: true
+              $ref: '#/components/schemas/ReservationRequest'
+      responses:
+        '201':
+          description: Reservation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '409':
+          description: Seat unavailable or duplicate active reservation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reservations/{reservationId}:
+    get:
+      tags: [reservation-controller]
+      operationId: getReservationDetails
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
       responses:
         '200':
-          description: OK
+          description: Reservation detail
           content:
-            "*/*":
+            application/json:
               schema:
-                "$ref": "#/components/schemas/PaymentResponse"
+                $ref: '#/components/schemas/ReservationResponse'
+        '404':
+          description: Reservation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reservations/{reservationId}/confirm:
+    post:
+      tags: [reservation-controller]
+      operationId: confirmReservation
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Reservation confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '409':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reservations/{reservationId}/expire:
+    post:
+      tags: [reservation-controller]
+      operationId: manuallyExpireReservation
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Reservation expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationResponse'
+        '409':
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments:
+    post:
+      tags: [payment-controller]
+      operationId: initiatePayment
+      parameters:
+        - name: reservationId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '201':
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '200':
+          description: Existing pending payment returned (idempotent)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '409':
+          description: Invalid payment initiation state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments/{paymentId}:
+    get:
+      tags: [payment-controller]
+      operationId: getPayment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Payment detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '404':
+          description: Payment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [payment-controller]
+      operationId: completePayment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCompletionRequest'
+      responses:
+        '200':
+          description: Payment completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Invalid request body/result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Payment already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/payments/{paymentId}/complete:
+    post:
+      tags: [payment-controller]
+      operationId: completePaymentForTesting
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCompletionRequest'
+      responses:
+        '200':
+          description: Payment completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+
+  /api/payments/{paymentId}/success:
+    post:
+      tags: [dev-payment-controller]
+      operationId: completePaymentSuccess
+      description: Development profile only.
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Payment marked successful (dev)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+
+  /api/payments/{paymentId}/failure:
+    post:
+      tags: [dev-payment-controller]
+      operationId: completePaymentFailure
+      description: Development profile only.
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Payment marked failed (dev)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+
+  /api/webhooks/payment-success:
+    post:
+      security: []
+      tags: [webhook-controller]
+      operationId: handlePaymentSuccess
+      parameters:
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookPaymentEvent'
+      responses:
+        '200':
+          description: Webhook processed
+        '400':
+          description: Invalid payload
+        '401':
+          description: Invalid webhook signature
+        '500':
+          description: Server error
+
+  /api/webhooks/payment-failure:
+    post:
+      security: []
+      tags: [webhook-controller]
+      operationId: handlePaymentFailure
+      parameters:
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookPaymentEvent'
+      responses:
+        '200':
+          description: Webhook processed
+        '400':
+          description: Invalid payload
+        '401':
+          description: Invalid webhook signature
+        '500':
+          description: Server error
+
 components:
+  securitySchemes:
+    bearer-jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT bearer authentication
   schemas:
-    ReservationRequest:
-      required:
-      - seatId
-      type: object
-      properties:
-        seatId:
-          type: integer
-          format: int64
     LoginRequest:
-      required:
-      - email
-      - password
       type: object
+      required: [email, password]
       properties:
         email:
+          type: string
           maxLength: 255
-          minLength: 0
-          type: string
         password:
-          maxLength: 128
+          type: string
           minLength: 6
-          type: string
-    SeatResponse:
+          maxLength: 128
+
+    LoginResponse:
       type: object
       properties:
-        id:
-          type: integer
-          format: int64
-        seatNumber:
+        token:
           type: string
-        status:
+        refreshToken:
           type: string
-    ReservationResponse:
+        email:
+          type: string
+
+    RefreshTokenRequest:
       type: object
+      required: [refreshToken]
       properties:
-        id:
-          type: integer
-          format: int64
-        status:
+        refreshToken:
           type: string
-        seat_id:
-          type: integer
-          format: int64
-        seat_number:
-          type: string
-        created_at:
-          type: string
-        confirmed_at:
-          type: string
-        expired_at:
-          type: string
-    PaymentCompletionRequest:
-      required:
-      - result
-      type: object
-      properties:
-        result:
-          type: string
-    PaymentResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        reservation_id:
-          type: integer
-          format: int64
-        status:
-          type: string
-        provider_reference:
-          type: string
-        amount:
-          type: string
-        created_at:
-          type: string
+
     UserProfileResponse:
       type: object
       properties:
@@ -385,6 +501,87 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    SeatResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        seatNumber:
+          type: string
+        status:
+          type: string
+
+    ReservationRequest:
+      type: object
+      required: [seatId]
+      properties:
+        seatId:
+          type: integer
+          format: int64
+
+    ReservationResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        seat_id:
+          type: integer
+          format: int64
+        seat_number:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+        expires_at:
+          type: string
+        confirmed_at:
+          type: string
+        expired_at:
+          type: string
+
+    PaymentCompletionRequest:
+      type: object
+      required: [result]
+      properties:
+        result:
+          type: string
+          enum: [SUCCESS, FAILED]
+
+    PaymentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        reservationId:
+          type: integer
+          format: int64
+        reservationStatus:
+          type: string
+        status:
+          type: string
+        providerReference:
+          type: string
+        amount:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    WebhookPaymentEvent:
+      type: object
+      required: [eventId, providerReference]
+      properties:
+        eventId:
+          type: string
+        providerReference:
+          type: string
+
     ErrorResponse:
       type: object
       properties:
@@ -400,9 +597,3 @@ components:
           type: string
         path:
           type: string
-  securitySchemes:
-    bearer-jwt:
-      type: http
-      description: JWT Bearer Token
-      scheme: bearer
-      bearerFormat: JWT

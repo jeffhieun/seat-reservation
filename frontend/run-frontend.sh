@@ -17,6 +17,7 @@ log_warning() { echo -e "${COLOR_YELLOW}[WARN]${COLOR_RESET} $*"; }
 log_error() { echo -e "${COLOR_RED}[ERROR]${COLOR_RESET} $*" >&2; }
 
 RUN_TESTS=false
+RUN_BUILD=false
 RUN_VERIFY=false
 RUN_BACKGROUND=false
 SUCCESS=false
@@ -52,6 +53,7 @@ parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --with-tests) RUN_TESTS=true ;;
+      --with-build) RUN_BUILD=true ;;
       --verify) RUN_VERIFY=true ;;
       --background) RUN_BACKGROUND=true ;;
       *)
@@ -91,6 +93,12 @@ run_frontend_tests() {
     src/api/reservationApi.test.js \
     src/api/paymentApi.test.js
   log_success "Frontend tests passed."
+}
+
+run_frontend_build() {
+  log_info "Building frontend..."
+  npm run build
+  log_success "Frontend build passed."
 }
 
 wait_for_frontend() {
@@ -149,6 +157,10 @@ main() {
 
   if [[ "${RUN_TESTS}" == "true" ]]; then
     run_frontend_tests
+  fi
+
+  if [[ "${RUN_BUILD}" == "true" ]]; then
+    run_frontend_build
   fi
 
   start_frontend

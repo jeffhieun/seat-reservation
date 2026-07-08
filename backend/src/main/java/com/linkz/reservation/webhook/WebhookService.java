@@ -2,7 +2,6 @@ package com.linkz.reservation.webhook;
 
 import com.linkz.reservation.audit.AuditService;
 import com.linkz.reservation.payment.Payment;
-import com.linkz.reservation.payment.PaymentRepository;
 import com.linkz.reservation.payment.PaymentService;
 import com.linkz.reservation.reservation.Reservation;
 import com.linkz.reservation.reservation.ReservationService;
@@ -15,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class WebhookService {
     
     private final WebhookEventRepository webhookEventRepository;
-    private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
     private final ReservationService reservationService;
     private final AuditService auditService;
@@ -34,8 +32,7 @@ public class WebhookService {
         webhookEventRepository.save(event);
         
         // Find payment by provider reference
-        Payment payment = paymentRepository.findByProviderReference(providerReference)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+        Payment payment = paymentService.getPaymentByProviderReference(providerReference);
 
         auditService.recordWebhookPaymentSuccessReceived(eventId, payment);
 
@@ -61,14 +58,10 @@ public class WebhookService {
                 .build();
         webhookEventRepository.save(event);
         
-        // Find and update payment
-        Payment payment = paymentRepository.findByProviderReference(providerReference)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+        Payment payment = paymentService.getPaymentByProviderReference(providerReference);
 
         auditService.recordWebhookPaymentFailureReceived(eventId, payment);
 
-        Payment updatedPayment = paymentService.markPaymentFailed(providerReference);
-        auditService.recordPaymentFailure(updatedPayment);
+        paymentService.failPaymentByProviderReference(providerReference);
     }
 }
-

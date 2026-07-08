@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getReservationById } from "../api/reservationApi";
-import { getPaymentById } from "../api/paymentApi";
+import {
+  completePaymentSuccessInDevelopment,
+  getPaymentById,
+} from "../api/paymentApi";
 import Navbar from "../components/Navbar";
 import { getApiErrorMessage } from "../utils/apiError";
 
 const POLL_INTERVAL_MS = 2000;
 const TIMEOUT_MS = 60000;
+const IS_DEVELOPMENT_MODE = import.meta.env.MODE === "development";
 
 function PaymentProcessingPage() {
   const { paymentId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const startedAtRef = useRef(Date.now());
+  const devCompletionTriggeredRef = useRef(false);
 
   const [payment, setPayment] = useState(null);
   const [error, setError] = useState("");
@@ -66,6 +71,16 @@ function PaymentProcessingPage() {
               reservationId: currentPayment?.reservationId,
             },
           });
+          return;
+        }
+
+        if (
+          IS_DEVELOPMENT_MODE
+          && !devCompletionTriggeredRef.current
+          && currentPayment?.status === "PENDING"
+        ) {
+          devCompletionTriggeredRef.current = true;
+          await completePaymentSuccessInDevelopment(paymentId);
           return;
         }
 

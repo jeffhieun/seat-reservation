@@ -1,13 +1,17 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PaymentProcessingPage from "./PaymentProcessingPage";
-import { getPaymentById } from "../api/paymentApi";
+import {
+  completePaymentSuccessInDevelopment,
+  getPaymentById,
+} from "../api/paymentApi";
 import { getReservationById } from "../api/reservationApi";
 
 const navigateMock = vi.fn();
 
 vi.mock("../api/paymentApi", () => ({
   getPaymentById: vi.fn(),
+  completePaymentSuccessInDevelopment: vi.fn(),
 }));
 
 vi.mock("../api/reservationApi", () => ({
@@ -32,6 +36,7 @@ describe("PaymentProcessingPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getReservationById.mockResolvedValue({ id: 5, seat_number: "A1", status: "CONFIRMED" });
+    completePaymentSuccessInDevelopment.mockResolvedValue({});
   });
 
   it("polls and navigates to success when backend confirms", async () => {
