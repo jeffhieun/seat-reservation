@@ -28,10 +28,16 @@ public class Reservation {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "reservations_seq_gen")
     private Long id;
     
+    /**
+     * Reservation references an existing user; no cascade to avoid accidental user lifecycle changes.
+     */
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
     
+    /**
+     * Reservation references an existing seat; no cascade to avoid accidental seat delete/update propagation.
+     */
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "seat_id", nullable = false)
     private Seat seat;
@@ -45,6 +51,13 @@ public class Reservation {
     
     @Column(name = "expired_at")
     private LocalDateTime expiredAt;
+
+    /**
+     * Optimistic locking detects concurrent modifications to reservation status transitions.
+     */
+    @Version
+    @Column(nullable = false)
+    private Long version;
     
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -54,4 +67,3 @@ public class Reservation {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 }
-

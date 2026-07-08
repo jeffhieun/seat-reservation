@@ -30,6 +30,10 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "payments_seq_gen")
     private Long id;
     
+    /**
+     * Payment references its reservation without cascade; reservation lifecycle is managed explicitly by services.
+     * Orphan removal is intentionally not used because payment state transitions are handled as business events.
+     */
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "reservation_id", nullable = false)
     private Reservation reservation;
@@ -43,6 +47,13 @@ public class Payment {
     
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
+
+    /**
+     * Optimistic locking prevents lost updates when payment status changes concurrently.
+     */
+    @Version
+    @Column(nullable = false)
+    private Long version;
     
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -52,4 +63,3 @@ public class Payment {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 }
-

@@ -8,6 +8,7 @@ import com.linkz.reservation.reservation.ReservationException;
 import com.linkz.reservation.reservation.ReservationNotFoundException;
 import com.linkz.reservation.reservation.SeatUnavailableException;
 import io.jsonwebtoken.JwtException;
+import org.hibernate.StaleObjectStateException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.PessimisticLockException;
@@ -16,6 +17,8 @@ import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -87,7 +90,25 @@ public class GlobalExceptionHandler {
             OptimisticLockException ex,
             HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(buildResponse(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request.getRequestURI()));
+                .body(buildResponse(
+                        HttpStatus.CONFLICT,
+                        "Conflict",
+                        "Resource was modified by another transaction",
+                        request.getRequestURI()
+                ));
+    }
+
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, OptimisticLockingFailureException.class, StaleObjectStateException.class})
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailureException(
+            RuntimeException ex,
+            HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(buildResponse(
+                        HttpStatus.CONFLICT,
+                        "Conflict",
+                        "Resource was modified by another transaction",
+                        request.getRequestURI()
+                ));
     }
 
     @ExceptionHandler(PessimisticLockException.class)

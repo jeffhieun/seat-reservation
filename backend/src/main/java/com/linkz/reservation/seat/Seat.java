@@ -29,6 +29,13 @@ public class Seat {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SeatStatus status;
+
+    /**
+     * Optimistic locking prevents lost updates when concurrent transactions modify the same seat.
+     */
+    @Version
+    @Column(nullable = false)
+    private Long version;
     
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -38,4 +45,3 @@ public class Seat {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 }
-
