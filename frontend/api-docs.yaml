@@ -206,6 +206,18 @@ paths:
             "*/*":
               schema:
                 type: object
+  "/api/auth/me":
+    get:
+      tags:
+      - auth-controller
+      operationId: me
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/UserProfileResponse"
   "/api/seats":
     get:
       tags:
@@ -258,6 +270,30 @@ paths:
             "*/*":
               schema:
                 type: object
+    post:
+      tags:
+      - payment-controller
+      operationId: completePayment
+      parameters:
+      - name: paymentId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/PaymentCompletionRequest"
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            "*/*":
+              schema:
+                "$ref": "#/components/schemas/PaymentResponse"
 components:
   schemas:
     ReservationRequest:
@@ -310,6 +346,59 @@ components:
         confirmed_at:
           type: string
         expired_at:
+          type: string
+    PaymentCompletionRequest:
+      required:
+      - result
+      type: object
+      properties:
+        result:
+          type: string
+    PaymentResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        reservation_id:
+          type: integer
+          format: int64
+        status:
+          type: string
+        provider_reference:
+          type: string
+        amount:
+          type: string
+        created_at:
+          type: string
+    UserProfileResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          format: int32
+        error:
+          type: string
+        message:
+          type: string
+        path:
           type: string
   securitySchemes:
     bearer-jwt:

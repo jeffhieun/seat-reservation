@@ -6,6 +6,8 @@ import com.linkz.reservation.reservation.ReservationService;
 import com.linkz.reservation.reservation.ReservationStatus;
 import com.linkz.reservation.seat.SeatStatus;
 import lombok.RequiredArgsConstructor;
+import jakarta.persistence.EntityNotFoundException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,7 +82,7 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public Payment getPaymentByReservationId(Long reservationId) {
         return paymentRepository.findByReservationId(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Payment not found"));
     }
 
     @Transactional(readOnly = true)
@@ -88,7 +90,7 @@ public class PaymentService {
         Payment payment = getPaymentById(paymentId);
 
         if (!payment.getReservation().getUser().getId().equals(userId)) {
-            throw new PaymentAccessDeniedException("Payment does not belong to the authenticated user");
+            throw new AccessDeniedException("Payment does not belong to the authenticated user");
         }
 
         return payment;
@@ -97,11 +99,42 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public Payment getPaymentById(Long paymentId) {
         return paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
+                .orElseThrow(() -> new EntityNotFoundException("Payment not found"));
+    }
+
+    @Transactional
+    public Payment completePayment(Long paymentId, Long userId, String result) {
+        Payment payment = getPaymentByIdForUser(paymentId, userId);
+
+        if (!PaymentStatus.PENDING.equals(payment.getStatus())) {
+            throw new PaymentConflictException("Payment has already been completed");
+        }
+
+        if (result == null) {
+            throw new IllegalArgumentException("result is required");
+        }
+
+        String normalizedResult = result.trim().toUpperCase();
+        switch (normalizedResult) {
+            case "SUCCESS" -> {
+                reservationService.confirmReservation(payment.getReservation().getId(), userId);
+                payment.setStatus(PaymentStatus.SUCCESS);
+                paymentRepository.saveAndFlush(payment);
+                auditService.recordPaymentSuccess(payment);
+                return payment;
+            }
+            case "FAILED" -> {
+                reservationService.expireReservation(payment.getReservation().getId(), userId);
+                payment.setStatus(PaymentStatus.FAILED);
+                paymentRepository.saveAndFlush(payment);
+                auditService.recordPaymentFailure(payment);
+                return payment;
+            }
+            default -> throw new IllegalArgumentException("Invalid payment result");
+        }
     }
     
     private String generateProviderReference() {
         return "PAY_" + UUID.randomUUID().toString().substring(0, 16).toUpperCase();
     }
 }
-

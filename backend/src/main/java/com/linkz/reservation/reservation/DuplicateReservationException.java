@@ -1,8 +1,7 @@
 package com.linkz.reservation.reservation;
 
-public class DuplicateReservationException extends RuntimeException {
+public class DuplicateReservationException extends ReservationException {
     public DuplicateReservationException(String message) {
         super(message);
     }
 }
-

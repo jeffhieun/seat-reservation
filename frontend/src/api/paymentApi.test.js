@@ -37,10 +37,11 @@ describe("paymentApi", () => {
   it("completes payment via POST /api/payments/{id}", async () => {
     axiosClient.post.mockResolvedValue({ data: { paymentId: 11, status: "SUCCESS" } });
 
-    const result = await completePayment(11);
+    const result = await completePayment(11, "SUCCESS");
 
-    expect(axiosClient.post).toHaveBeenCalledWith("/api/payments/11");
+    expect(axiosClient.post).toHaveBeenCalledWith("/api/payments/11", {
+      result: "SUCCESS",
+    });
     expect(result).toEqual({ paymentId: 11, status: "SUCCESS" });
   });
 });
-

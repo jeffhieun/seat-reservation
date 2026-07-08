@@ -1,7 +1,7 @@
 package com.linkz.reservation.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.linkz.reservation.commons.exception.ApiErrorResponse;
+import com.linkz.reservation.commons.exception.ErrorResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,7 +25,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException, ServletException {
-        ApiErrorResponse payload = new ApiErrorResponse(
+        ErrorResponse payload = new ErrorResponse(
                 Instant.now().toString(),
                 HttpStatus.FORBIDDEN.value(),
                 HttpStatus.FORBIDDEN.getReasonPhrase(),
@@ -38,4 +38,3 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
         objectMapper.writeValue(response.getOutputStream(), payload);
     }
 }
-

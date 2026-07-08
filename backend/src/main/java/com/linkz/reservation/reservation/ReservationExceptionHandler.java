@@ -1,5 +1,8 @@
 package com.linkz.reservation.reservation;
 
+import com.linkz.reservation.commons.exception.ErrorResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -7,55 +10,74 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.Instant;
+import java.util.stream.Collectors;
+
 @RestControllerAdvice(assignableTypes = ReservationController.class)
 public class ReservationExceptionHandler {
 
     @ExceptionHandler(DuplicateReservationException.class)
-    public ResponseEntity<ReservationErrorResponse> handleDuplicateReservation(DuplicateReservationException ex) {
+    public ResponseEntity<ErrorResponse> handleDuplicateReservation(
+            DuplicateReservationException ex,
+            HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ReservationErrorResponse("DUPLICATE_RESERVATION", ex.getMessage()));
+                .body(buildResponse(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(SeatUnavailableException.class)
-    public ResponseEntity<ReservationErrorResponse> handleSeatUnavailable(SeatUnavailableException ex) {
+    public ResponseEntity<ErrorResponse> handleSeatUnavailable(
+            SeatUnavailableException ex,
+            HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ReservationErrorResponse("SEAT_UNAVAILABLE", ex.getMessage()));
+                .body(buildResponse(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(InvalidReservationTransitionException.class)
-    public ResponseEntity<ReservationErrorResponse> handleInvalidTransition(InvalidReservationTransitionException ex) {
+    public ResponseEntity<ErrorResponse> handleInvalidTransition(
+            InvalidReservationTransitionException ex,
+            HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ReservationErrorResponse("INVALID_RESERVATION_TRANSITION", ex.getMessage()));
+                .body(buildResponse(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(ReservationNotFoundException.class)
-    public ResponseEntity<ReservationErrorResponse> handleReservationNotFound(ReservationNotFoundException ex) {
+    public ResponseEntity<ErrorResponse> handleReservationNotFound(
+            ReservationNotFoundException ex,
+            HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ReservationErrorResponse("RESERVATION_NOT_FOUND", ex.getMessage()));
+                .body(buildResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ReservationErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex,
+            HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ReservationErrorResponse("BAD_REQUEST", ex.getMessage()));
+                .body(buildResponse(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ReservationErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex,
+            HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ReservationErrorResponse("FORBIDDEN", ex.getMessage()));
+                .body(buildResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ReservationErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ErrorResponse> handleValidation(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request) {
         String message = ex.getBindingResult()
                 .getAllErrors()
                 .stream()
-                .findFirst()
-                .map(error -> error.getDefaultMessage() != null ? error.getDefaultMessage() : "Invalid request")
-                .orElse("Invalid request");
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining(", "));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ReservationErrorResponse("BAD_REQUEST", message));
+                .body(buildResponse(HttpStatus.BAD_REQUEST, "Bad Request", message, request.getRequestURI()));
+    }
+
+    private ErrorResponse buildResponse(HttpStatus status, String error, String message, String path) {
+        return new ErrorResponse(Instant.now().toString(), status.value(), error, message, path);
     }
 }
-

@@ -1,7 +1,7 @@
 package com.linkz.reservation.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.linkz.reservation.commons.exception.ApiErrorResponse;
+import com.linkz.reservation.commons.exception.ErrorResponse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,10 +27,10 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
                          AuthenticationException authException) throws IOException, ServletException {
         String message = (String) request.getAttribute(JwtAuthenticationFilter.AUTH_ERROR_MESSAGE_ATTRIBUTE);
         if (message == null || message.isBlank()) {
-            message = "Authentication is required to access this resource";
+            message = "Invalid or expired token";
         }
 
-        ApiErrorResponse payload = new ApiErrorResponse(
+        ErrorResponse payload = new ErrorResponse(
                 Instant.now().toString(),
                 HttpStatus.UNAUTHORIZED.value(),
                 HttpStatus.UNAUTHORIZED.getReasonPhrase(),
@@ -43,4 +43,3 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
         objectMapper.writeValue(response.getOutputStream(), payload);
     }
 }
-

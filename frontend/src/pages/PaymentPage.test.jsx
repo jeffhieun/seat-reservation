@@ -71,7 +71,7 @@ describe("PaymentPage", () => {
 
     resolver({ paymentId: 20, status: "SUCCESS", reservationStatus: "CONFIRMED" });
     await waitFor(() => {
-      expect(completePayment).toHaveBeenCalledWith(20);
+      expect(completePayment).toHaveBeenCalledWith(20, "SUCCESS");
     });
   });
 
@@ -91,7 +91,7 @@ describe("PaymentPage", () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(completePayment).toHaveBeenCalledWith(20);
+      expect(completePayment).toHaveBeenCalledWith(20, "SUCCESS");
       expect(navigateMock).toHaveBeenCalledWith("/success", expect.any(Object));
     });
   });

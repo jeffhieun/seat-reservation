@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../api/authApi";
+import { useAuth } from "../context/AuthContext";
+import { getApiErrorMessage } from "../utils/apiError";
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { loadCurrentUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,9 +32,10 @@ function LoginPage() {
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("userEmail", data.email || email);
+      await loadCurrentUser();
       navigate("/seats", { replace: true });
     } catch (err) {
-      const message = err?.response?.data?.error || err?.message || "Login failed.";
+      const message = getApiErrorMessage(err, "Login failed.");
       setError(message);
     } finally {
       setLoading(false);
@@ -75,4 +79,3 @@ function LoginPage() {
 }
 
 export default LoginPage;
-

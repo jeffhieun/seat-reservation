@@ -6,15 +6,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import java.util.Map;
-import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.RequestParam;
+import com.linkz.reservation.commons.exception.ErrorResponse;
+
+import java.time.Instant;
 
 @Slf4j
 @RestController
@@ -35,10 +36,11 @@ public class AuthController {
             HttpStatus status = e.getMessage() != null && e.getMessage().toLowerCase().contains("already")
                     ? HttpStatus.CONFLICT
                     : HttpStatus.BAD_REQUEST;
-            return ResponseEntity.status(status).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(status).body(errorResponse(status, e.getMessage(), "/api/auth/register"));
         } catch (Exception e) {
             log.error("Unexpected error during registration", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "internal_error"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(errorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "internal_error", "/api/auth/register"));
         }
     }
 
@@ -55,10 +57,11 @@ public class AuthController {
             HttpStatus status = e.getMessage() != null && e.getMessage().toLowerCase().contains("already")
                     ? HttpStatus.CONFLICT
                     : HttpStatus.BAD_REQUEST;
-            return ResponseEntity.status(status).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(status).body(errorResponse(status, e.getMessage(), "/api/auth/register"));
         } catch (Exception e) {
             log.error("Unexpected error during registration", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "internal_error"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(errorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "internal_error", "/api/auth/register"));
         }
     }
     
@@ -71,10 +74,12 @@ public class AuthController {
             return ResponseEntity.ok(new LoginResponse(tokens.accessToken(), tokens.refreshToken(), request.email()));
         } catch (IllegalArgumentException e) {
             log.warn("Login failed: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(errorResponse(HttpStatus.UNAUTHORIZED, e.getMessage(), "/api/auth/login"));
         } catch (Exception e) {
             log.error("Unexpected error during login", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "internal_error"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(errorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "internal_error", "/api/auth/login"));
         }
     }
 
@@ -89,10 +94,12 @@ public class AuthController {
             return ResponseEntity.ok(new LoginResponse(tokens.accessToken(), tokens.refreshToken(), email));
         } catch (IllegalArgumentException e) {
             log.warn("Login failed: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(errorResponse(HttpStatus.UNAUTHORIZED, e.getMessage(), "/api/auth/login"));
         } catch (Exception e) {
             log.error("Unexpected error during login", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "internal_error"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(errorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "internal_error", "/api/auth/login"));
         }
     }
 
@@ -103,7 +110,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<CurrentUserResponse> me() {
+    public ResponseEntity<UserProfileResponse> me() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null
@@ -112,13 +119,10 @@ public class AuthController {
             throw new BadCredentialsException("Invalid or expired token");
         }
 
-        List<String> roles = authentication.getAuthorities()
-                .stream()
-                .map(GrantedAuthority::getAuthority)
-                .map(role -> role.startsWith("ROLE_") ? role.substring("ROLE_".length()) : role)
-                .toList();
+        return ResponseEntity.ok(authService.getCurrentUser(authentication.getName()));
+    }
 
-        return ResponseEntity.ok(authService.getCurrentUser(authentication.getName(), roles));
+    private ErrorResponse errorResponse(HttpStatus status, String message, String path) {
+        return new ErrorResponse(Instant.now().toString(), status.value(), status.getReasonPhrase(), message, path);
     }
 }
-

@@ -12,7 +12,6 @@ import com.linkz.reservation.seat.SeatRepository;
 import com.linkz.reservation.seat.SeatStatus;
 import com.linkz.reservation.user.User;
 import com.linkz.reservation.user.UserRepository;
-import com.linkz.reservation.webhook.WebhookEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +27,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -54,9 +54,6 @@ class PaymentProcessingIntegrationTest {
     private ReservationRepository reservationRepository;
 
     @Autowired
-    private WebhookEventRepository webhookEventRepository;
-
-    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private Long seatId;
@@ -64,7 +61,6 @@ class PaymentProcessingIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        webhookEventRepository.deleteAll();
         paymentRepository.deleteAll();
         reservationRepository.deleteAll();
         seatRepository.deleteAll();
@@ -107,17 +103,17 @@ class PaymentProcessingIntegrationTest {
         assertThat(payment.providerReference()).startsWith("PAY_");
 
         String completionBody = mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
-                        .header("Authorization", "Bearer " + ownerToken))
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("result", "SUCCESS"))))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        PaymentCompletionResponse completionResponse =
-                objectMapper.readValue(completionBody, PaymentCompletionResponse.class);
-        assertThat(completionResponse.paymentId()).isEqualTo(payment.id());
+        PaymentResponse completionResponse = objectMapper.readValue(completionBody, PaymentResponse.class);
+        assertThat(completionResponse.id()).isEqualTo(payment.id());
         assertThat(completionResponse.status()).isEqualTo(PaymentStatus.SUCCESS.name());
-        assertThat(completionResponse.reservationStatus()).isEqualTo(ReservationStatus.CONFIRMED.name());
 
         Payment paymentAfterCompletion = paymentRepository.findById(payment.id()).orElseThrow();
         assertThat(paymentAfterCompletion.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
@@ -130,18 +126,55 @@ class PaymentProcessingIntegrationTest {
     }
 
     @Test
+    void completePaymentWithoutBodyShouldReturnBadRequest() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+        ReservationResponse reservation = reserveSeat(ownerToken);
+        PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
+
+        mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Request body is missing or invalid."));
+    }
+
+    @Test
+    void completePaymentWithInvalidJsonShouldReturnBadRequest() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+        ReservationResponse reservation = reserveSeat(ownerToken);
+        PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
+
+        mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{invalid-json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value("Request body is missing or invalid."));
+    }
+
+    @Test
     void completePaymentTwiceShouldBeIdempotent() throws Exception {
         String ownerToken = login("payer1@test.com", "password123");
         ReservationResponse reservation = reserveSeat(ownerToken);
         PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
 
         mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
-                        .header("Authorization", "Bearer " + ownerToken))
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("result", "SUCCESS"))))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
-                        .header("Authorization", "Bearer " + ownerToken))
-                .andExpect(status().isOk());
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("result", "SUCCESS"))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"));
 
         Payment paymentAfterSecondCall = paymentRepository.findById(payment.id()).orElseThrow();
         assertThat(paymentAfterSecondCall.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
@@ -161,8 +194,12 @@ class PaymentProcessingIntegrationTest {
         PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
 
         mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
-                        .header("Authorization", "Bearer " + otherToken))
-                .andExpect(status().isForbidden());
+                        .header("Authorization", "Bearer " + otherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("result", "SUCCESS"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.error").value("Forbidden"));
     }
 
     @Test
@@ -170,27 +207,50 @@ class PaymentProcessingIntegrationTest {
         String ownerToken = login("payer1@test.com", "password123");
 
         mockMvc.perform(post("/api/payments/{paymentId}", 999999L)
-                        .header("Authorization", "Bearer " + ownerToken))
-                .andExpect(status().isNotFound());
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("result", "SUCCESS"))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"));
     }
 
     @Test
-    void failedPaymentCannotBeCompleted() throws Exception {
+    void failedPaymentShouldExpireReservationAndReleaseSeat() throws Exception {
         String ownerToken = login("payer1@test.com", "password123");
         ReservationResponse reservation = reserveSeat(ownerToken, secondSeatId);
         PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
 
-        mockMvc.perform(post("/api/webhooks/payment-failure")
+        mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
+                        .header("Authorization", "Bearer " + ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "eventId", "evt-payment-failure-1",
-                                "providerReference", payment.providerReference()
-                        ))))
-                .andExpect(status().isOk());
+                        .content(objectMapper.writeValueAsString(Map.of("result", "FAILED"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(PaymentStatus.FAILED.name()));
+
+        Payment paymentAfterCompletion = paymentRepository.findById(payment.id()).orElseThrow();
+        assertThat(paymentAfterCompletion.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(reservationRepository.findById(reservation.id())).get()
+                .extracting(res -> res.getStatus().name())
+                .isEqualTo(ReservationStatus.EXPIRED.name());
+        assertThat(seatRepository.findById(secondSeatId)).get()
+                .extracting(Seat::getStatus)
+                .isEqualTo(SeatStatus.AVAILABLE);
+    }
+
+    @Test
+    void completePaymentShouldRejectInvalidResult() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+        ReservationResponse reservation = reserveSeat(ownerToken);
+        PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
 
         mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
-                        .header("Authorization", "Bearer " + ownerToken))
-                .andExpect(status().isConflict());
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("result", "UNKNOWN"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"));
     }
 
     private String login(String email, String password) throws Exception {

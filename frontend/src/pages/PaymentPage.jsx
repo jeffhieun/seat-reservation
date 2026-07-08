@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getReservationById } from "../api/reservationApi";
 import { completePayment, getPaymentById, initiatePayment } from "../api/paymentApi";
 import Navbar from "../components/Navbar";
+import { getApiErrorMessage } from "../utils/apiError";
 
 function PaymentPage() {
   const location = useLocation();
@@ -36,11 +37,7 @@ function PaymentPage() {
         const data = await getReservationById(reservationId);
         setReservation(data);
       } catch (err) {
-        setError(
-          err?.response?.data?.error ||
-          err?.message ||
-          "Failed to load reservation."
-        );
+        setError(getApiErrorMessage(err, "Failed to load reservation."));
       } finally {
         setLoadingReservation(false);
       }
@@ -69,12 +66,7 @@ function PaymentPage() {
         setPayment(createdPayment);
         window.sessionStorage.setItem(paymentStorageKey, String(createdPayment.id));
       } catch (err) {
-        setError(
-          err?.response?.data?.message
-          || err?.response?.data?.error
-          || err?.message
-          || "Failed to load payment."
-        );
+        setError(getApiErrorMessage(err, "Failed to load payment."));
       } finally {
         setLoadingPayment(false);
       }
@@ -104,7 +96,7 @@ function PaymentPage() {
     setPaying(true);
 
     try {
-      const paymentResponse = await completePayment(payment.id);
+      const paymentResponse = await completePayment(payment.id, "SUCCESS");
       const refreshedPayment = await getPaymentById(payment.id);
       const refreshedReservation = await getReservationById(reservationId);
 
@@ -121,13 +113,7 @@ function PaymentPage() {
       }
 
     } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        (typeof err?.response?.data === "string" ? err.response.data : null) ||
-        err?.message ||
-        "Failed to complete payment."
-      );
+      setError(getApiErrorMessage(err, "Failed to complete payment."));
     } finally {
       setPaying(false);
     }

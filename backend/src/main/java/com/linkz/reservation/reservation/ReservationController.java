@@ -3,8 +3,6 @@ package com.linkz.reservation.reservation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.PessimisticLockingFailureException;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -32,16 +30,11 @@ public class ReservationController {
         User user = findUser(authentication);
         log.debug("Reservation attempt for user: {} and seat: {}", user.getId(), request.seatId());
 
-        try {
-            Reservation reservation = reservationService.reserveSeat(user.getId(), request.seatId());
-            log.info("Reservation created: {} for user: {}", reservation.getId(), user.getId());
+        Reservation reservation = reservationService.reserveSeat(user.getId(), request.seatId());
+        log.info("Reservation created: {} for user: {}", reservation.getId(), user.getId());
 
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ReservationResponse.from(reservation));
-        } catch (PessimisticLockingFailureException ex) {
-            log.debug("Reservation lock failure for user {} seat {}", user.getId(), request.seatId(), ex);
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        }
+        return ResponseEntity.status(201)
+                .body(ReservationResponse.from(reservation));
     }
     
     @GetMapping

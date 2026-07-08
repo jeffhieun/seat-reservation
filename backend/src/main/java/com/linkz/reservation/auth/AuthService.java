@@ -9,8 +9,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -64,15 +62,15 @@ public class AuthService {
         );
     }
 
-    public CurrentUserResponse getCurrentUser(String email, List<String> roles) {
+    public UserProfileResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("Invalid or expired token"));
 
-        return new CurrentUserResponse(
+        return new UserProfileResponse(
                 user.getId(),
                 user.getEmail(),
-                user.getEmail(),
-                roles
+                user.getCreatedAt(),
+                user.getUpdatedAt()
         );
     }
 }

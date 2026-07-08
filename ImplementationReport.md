@@ -1,19 +1,5 @@
 # Implementation Audit Report — Seat Reservation Platform
 
-## Concurrency
-**Status:** 🟡 Partial
-
-**Evidence:** `SeatRepository#findByIdForUpdate` (`PESSIMISTIC_WRITE`), transactional reservation flow, `SeatUnavailableException` mapped to HTTP 409
-
-**Missing implementation:**
-- No dedicated concurrent integration test proving two simultaneous same-seat requests yield one success + one 409.
-- No optimistic locking (`@Version`).
-
-**Recommended improvements:**
-- Add parallel race tests for reservation.
-- Consider optimistic locking where applicable.
-
-**Priority:** High
 
 ## REST API
 **Status:** 🟡 Partial
