@@ -217,6 +217,14 @@ function PaymentPage() {
               {paying ? "Completing Payment..." : "Complete Payment"}
             </button>
 
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => navigate("/seats")}
+              style={{ marginTop: 16 }}
+            >
+              ← Back to Seats
+            </button>
 
           </div>
 

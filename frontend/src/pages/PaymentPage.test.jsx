@@ -75,6 +75,23 @@ describe("PaymentPage", () => {
     });
   });
 
+  it("renders back to seats button and navigates without calling payment APIs", async () => {
+    render(<PaymentPage />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Loading payment...")).not.toBeInTheDocument();
+    });
+
+    const completeCallsBeforeClick = completePayment.mock.calls.length;
+    const paymentCallsBeforeClick = getPaymentById.mock.calls.length;
+
+    fireEvent.click(await screen.findByRole("button", { name: "← Back to Seats" }));
+
+    expect(navigateMock).toHaveBeenCalledWith("/seats");
+    expect(completePayment.mock.calls.length).toBe(completeCallsBeforeClick);
+    expect(getPaymentById.mock.calls.length).toBe(paymentCallsBeforeClick);
+  });
+
   it("navigates to success only after backend confirms payment", async () => {
     completePayment.mockResolvedValue({ paymentId: 20, status: "SUCCESS", reservationStatus: "CONFIRMED" });
     getPaymentById
