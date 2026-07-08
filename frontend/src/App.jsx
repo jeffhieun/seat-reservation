@@ -3,6 +3,8 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import SeatsPage from "./pages/SeatsPage";
 import PaymentPage from "./pages/PaymentPage";
+import PaymentProcessingPage from "./pages/PaymentProcessingPage";
+import PaymentFailedPage from "./pages/PaymentFailedPage";
 import SuccessPage from "./pages/SuccessPage";
 import ReservationPage from "./pages/ReservationPage";
 
@@ -46,13 +48,30 @@ function App() {
         )}
       />
       <Route
-        path="/success"
+        path="/payment/processing/:paymentId"
+        element={(
+          <ProtectedRoute>
+            <PaymentProcessingPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/payment/success"
         element={(
           <ProtectedRoute>
             <SuccessPage />
           </ProtectedRoute>
         )}
       />
+      <Route
+        path="/payment/failed"
+        element={(
+          <ProtectedRoute>
+            <PaymentFailedPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route path="/success" element={<Navigate to="/payment/success" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

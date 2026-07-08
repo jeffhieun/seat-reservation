@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import axiosClient from "../services/axiosClient";
-import { completePayment, getPaymentById, initiatePayment } from "./paymentApi";
+import {
+  completePayment,
+  completePaymentForTesting,
+  getPaymentById,
+  initiatePayment,
+} from "./paymentApi";
 
 vi.mock("../services/axiosClient", () => ({
   default: {
@@ -43,5 +48,16 @@ describe("paymentApi", () => {
       result: "SUCCESS",
     });
     expect(result).toEqual({ paymentId: 11, status: "SUCCESS" });
+  });
+
+  it("completes payment via testing endpoint", async () => {
+    axiosClient.post.mockResolvedValue({ data: { paymentId: 11, status: "FAILED" } });
+
+    const result = await completePaymentForTesting(11, "FAILED");
+
+    expect(axiosClient.post).toHaveBeenCalledWith("/api/payments/11/complete", {
+      result: "FAILED",
+    });
+    expect(result).toEqual({ paymentId: 11, status: "FAILED" });
   });
 });

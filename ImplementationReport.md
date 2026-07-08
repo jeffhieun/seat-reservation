@@ -2,26 +2,6 @@
 
 
 
-
-
-## Frontend
-**Status:** 🟡 Partial
-
-**Evidence:** Login page, seat grid, reservation table, Pay button, Refresh, loading/error states, reservation status tabs
-
-**Missing implementation:**
-- No registration page.
-- No countdown timer.
-- No live expired-update handling.
-- Success page doesn’t wait for confirmed payment outcome.
-
-**Recommended improvements:**
-- Add registration UI.
-- Add countdown + auto-refresh/polling.
-- Ensure success view only shows after confirmed backend state.
-
-**Priority:** High
-
 ## Integration (Button Click Trace)
 **Status:** 🟡 Partial
 

@@ -19,3 +19,10 @@ export async function completePayment(paymentId, result = "SUCCESS") {
   });
   return response.data;
 }
+
+export async function completePaymentForTesting(paymentId, result = "SUCCESS") {
+  const response = await axiosClient.post(`/api/payments/${paymentId}/complete`, {
+    result,
+  });
+  return response.data;
+}

@@ -98,9 +98,11 @@ class PaymentProcessingIntegrationTest {
 
         PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
         assertThat(payment.reservationId()).isEqualTo(reservation.id());
+        assertThat(payment.reservationStatus()).isEqualTo(ReservationStatus.PENDING_PAYMENT.name());
         assertThat(payment.status()).isEqualTo(PaymentStatus.PENDING.name());
         assertThat(payment.amount()).isEqualTo("10.00");
         assertThat(payment.providerReference()).startsWith("PAY_");
+        assertThat(payment.updatedAt()).isNotBlank();
 
         String completionBody = mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
                         .header("Authorization", "Bearer " + ownerToken)
@@ -114,6 +116,7 @@ class PaymentProcessingIntegrationTest {
         PaymentResponse completionResponse = objectMapper.readValue(completionBody, PaymentResponse.class);
         assertThat(completionResponse.id()).isEqualTo(payment.id());
         assertThat(completionResponse.status()).isEqualTo(PaymentStatus.SUCCESS.name());
+        assertThat(completionResponse.reservationStatus()).isEqualTo(ReservationStatus.CONFIRMED.name());
 
         Payment paymentAfterCompletion = paymentRepository.findById(payment.id()).orElseThrow();
         assertThat(paymentAfterCompletion.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
@@ -251,6 +254,36 @@ class PaymentProcessingIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.error").value("Bad Request"));
+    }
+
+    @Test
+    void getPaymentShouldIncludeReservationStatusAndUpdatedAt() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+        ReservationResponse reservation = reserveSeat(ownerToken);
+        PaymentResponse initiated = initiatePayment(ownerToken, reservation.id());
+
+        PaymentResponse fetched = getPayment(ownerToken, initiated.id());
+
+        assertThat(fetched.id()).isEqualTo(initiated.id());
+        assertThat(fetched.reservationId()).isEqualTo(reservation.id());
+        assertThat(fetched.reservationStatus()).isEqualTo(ReservationStatus.PENDING_PAYMENT.name());
+        assertThat(fetched.status()).isEqualTo(PaymentStatus.PENDING.name());
+        assertThat(fetched.updatedAt()).isNotBlank();
+    }
+
+    @Test
+    void completePaymentViaTestingEndpointShouldConfirmReservation() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+        ReservationResponse reservation = reserveSeat(ownerToken);
+        PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
+
+        mockMvc.perform(post("/api/payments/{paymentId}/complete", payment.id())
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("result", "SUCCESS"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(PaymentStatus.SUCCESS.name()))
+                .andExpect(jsonPath("$.reservationStatus").value(ReservationStatus.CONFIRMED.name()));
     }
 
     private String login(String email, String password) throws Exception {

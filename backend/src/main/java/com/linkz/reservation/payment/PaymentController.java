@@ -58,6 +58,17 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{paymentId}/complete")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<PaymentResponse> completePaymentForTesting(
+            @PathVariable Long paymentId,
+            @Valid @RequestBody PaymentCompletionRequest request,
+            Authentication authentication) {
+        User user = findUser(authentication);
+        PaymentResponse response = paymentCompletionService.completePayment(paymentId, user.getId(), request.result());
+        return ResponseEntity.ok(response);
+    }
+
     private User findUser(Authentication authentication) {
         return userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
