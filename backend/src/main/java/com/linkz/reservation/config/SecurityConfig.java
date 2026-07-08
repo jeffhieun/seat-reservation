@@ -22,10 +22,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
     
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
     
     private static final String[] PUBLIC_ENDPOINTS = {
         "/api/auth/login",
         "/api/auth/register",
+        "/api/auth/refresh",
         "/api/webhooks/**",
         "/actuator/health",
         "/swagger-ui.html",
@@ -48,6 +51,10 @@ public class SecurityConfig {
             )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(customAuthenticationEntryPoint)
+                .accessDeniedHandler(customAccessDeniedHandler)
             )
             .csrf(csrf -> csrf.disable())
             .formLogin(form -> form.disable())

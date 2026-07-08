@@ -1,11 +1,25 @@
 import axios from "axios";
 
+const BASE_URL = "http://localhost:8080";
+
 const axiosClient = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+function logoutAndRedirect() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("userEmail");
+
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login";
+  }
+}
+
+let refreshPromise = null;
 
 axiosClient.interceptors.request.use(
   (config) => {
@@ -22,19 +36,62 @@ axiosClient.interceptors.request.use(
 
 axiosClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error?.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("userEmail");
+  async (error) => {
+    const originalRequest = error?.config;
 
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
-      }
+    if (error?.response?.status !== 401 || !originalRequest) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    const requestUrl = originalRequest?.url || "";
+    const refreshToken = localStorage.getItem("refreshToken");
+
+    if (
+      originalRequest._retry ||
+      requestUrl.includes("/api/auth/refresh") ||
+      !refreshToken
+    ) {
+      logoutAndRedirect();
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      if (!refreshPromise) {
+        refreshPromise = axios
+          .post(
+            `${BASE_URL}/api/auth/refresh`,
+            { refreshToken },
+            {
+              headers: { "Content-Type": "application/json" },
+            }
+          )
+          .then((response) => {
+            const newAccessToken = response?.data?.token;
+            const newRefreshToken = response?.data?.refreshToken;
+
+            if (!newAccessToken || !newRefreshToken) {
+              throw new Error("Invalid refresh response");
+            }
+
+            localStorage.setItem("token", newAccessToken);
+            localStorage.setItem("refreshToken", newRefreshToken);
+          })
+          .finally(() => {
+            refreshPromise = null;
+          });
+      }
+
+      await refreshPromise;
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${localStorage.getItem("token")}`;
+      return axiosClient(originalRequest);
+    } catch (refreshError) {
+      logoutAndRedirect();
+      return Promise.reject(refreshError);
+    }
   }
 );
 
 export default axiosClient;
-

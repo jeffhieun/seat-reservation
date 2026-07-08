@@ -3,9 +3,15 @@ package com.linkz.reservation.auth;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import java.util.Map;
+import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -60,9 +66,9 @@ public class AuthController {
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
             log.debug("Login attempt for email: {}", request.email());
-            String token = authService.login(request.email(), request.password());
+            AuthTokens tokens = authService.login(request.email(), request.password());
             log.info("User logged in successfully: {}", request.email());
-            return ResponseEntity.ok(new LoginResponse(token, request.email()));
+            return ResponseEntity.ok(new LoginResponse(tokens.accessToken(), tokens.refreshToken(), request.email()));
         } catch (IllegalArgumentException e) {
             log.warn("Login failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", e.getMessage()));
@@ -78,9 +84,9 @@ public class AuthController {
                                        @RequestParam("password") String password) {
         try {
             log.debug("Login attempt for email: {}", email);
-            String token = authService.login(email, password);
+            AuthTokens tokens = authService.login(email, password);
             log.info("User logged in successfully: {}", email);
-            return ResponseEntity.ok(new LoginResponse(token, email));
+            return ResponseEntity.ok(new LoginResponse(tokens.accessToken(), tokens.refreshToken(), email));
         } catch (IllegalArgumentException e) {
             log.warn("Login failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", e.getMessage()));
@@ -89,7 +95,30 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "internal_error"));
         }
     }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        AuthTokens tokens = authService.refresh(request.refreshToken());
+        return ResponseEntity.ok(new LoginResponse(tokens.accessToken(), tokens.refreshToken(), tokens.email()));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<CurrentUserResponse> me() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new BadCredentialsException("Invalid or expired token");
+        }
+
+        List<String> roles = authentication.getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(role -> role.startsWith("ROLE_") ? role.substring("ROLE_".length()) : role)
+                .toList();
+
+        return ResponseEntity.ok(authService.getCurrentUser(authentication.getName(), roles));
+    }
 }
-
-
 

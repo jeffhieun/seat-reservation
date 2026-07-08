@@ -6,6 +6,7 @@ function Navbar() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("userEmail");
     navigate("/login", { replace: true });
   };
@@ -21,4 +22,3 @@ function Navbar() {
 }
 
 export default Navbar;
-
