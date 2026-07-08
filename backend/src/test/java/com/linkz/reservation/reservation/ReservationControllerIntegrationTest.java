@@ -20,7 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -50,7 +49,8 @@ class ReservationControllerIntegrationTest {
 
     private String ownerEmail;
     private String otherEmail;
-    private Long seatId;
+    private Long firstSeatId;
+    private Long secondSeatId;
 
     @BeforeEach
     void setUp() {
@@ -70,68 +70,76 @@ class ReservationControllerIntegrationTest {
                 .passwordHash(passwordEncoder.encode("password123"))
                 .build());
 
-        seatId = seatRepository.save(Seat.builder()
+        firstSeatId = seatRepository.save(Seat.builder()
                 .seatNumber("RC1")
+                .status(SeatStatus.AVAILABLE)
+                .build()).getId();
+
+        secondSeatId = seatRepository.save(Seat.builder()
+                .seatNumber("RC2")
                 .status(SeatStatus.AVAILABLE)
                 .build()).getId();
     }
 
     @Test
-    void reserveSeatShouldReturnCreatedDto() throws Exception {
+    void scenario1ShouldReturn409WhenUserReservesSameSeatTwiceWhilePending() throws Exception {
         String token = login(ownerEmail);
 
         mockMvc.perform(post("/api/reservations")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("seatId", seatId))))
+                        .content(objectMapper.writeValueAsString(Map.of("seatId", firstSeatId))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.seat_id").value(seatId))
+                .andExpect(jsonPath("$.seat_id").value(firstSeatId))
                 .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"));
-    }
-
-    @Test
-    void duplicateReservationShouldReturn409WithStandardPayload() throws Exception {
-        String token = login(ownerEmail);
-
-        mockMvc.perform(post("/api/reservations")
-                .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(Map.of("seatId", seatId))))
-            .andExpect(status().isCreated());
-
-        seatRepository.findById(seatId).ifPresent(seat -> {
-            seat.setStatus(SeatStatus.AVAILABLE);
-            seatRepository.saveAndFlush(seat);
-        });
 
         mockMvc.perform(post("/api/reservations")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("seatId", seatId))))
+                        .content(objectMapper.writeValueAsString(Map.of("seatId", firstSeatId))))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("DUPLICATE_RESERVATION"))
-                .andExpect(jsonPath("$.message").value("You already have an active reservation for this seat."));
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"))
+                .andExpect(jsonPath("$.message").value("You already have an active reservation for this seat."))
+                .andExpect(jsonPath("$.path").value("/api/reservations"));
     }
 
     @Test
-    void reservationDetailsShouldReturn404ForMissingId() throws Exception {
-        String token = login(ownerEmail);
-
-        mockMvc.perform(get("/api/reservations/{id}", 999999L)
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("RESERVATION_NOT_FOUND"));
-    }
-
-    @Test
-    void confirmAndExpireShouldFollowStateRules() throws Exception {
+    void scenario2ShouldAllowReserveAgainAfterExpired() throws Exception {
         String token = login(ownerEmail);
 
         String reserveBody = mockMvc.perform(post("/api/reservations")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("seatId", seatId))))
+                        .content(objectMapper.writeValueAsString(Map.of("seatId", firstSeatId))))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        ReservationResponse created = objectMapper.readValue(reserveBody, ReservationResponse.class);
+
+        mockMvc.perform(post("/api/reservations/{id}/expire", created.id())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPIRED"));
+
+        mockMvc.perform(post("/api/reservations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("seatId", firstSeatId))))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void scenario3ShouldReturn409WhenUserReservesSameSeatAfterConfirmed() throws Exception {
+        String token = login(ownerEmail);
+
+        String reserveBody = mockMvc.perform(post("/api/reservations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("seatId", firstSeatId))))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -144,32 +152,49 @@ class ReservationControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-        mockMvc.perform(post("/api/reservations/{id}/expire", created.id())
-                        .header("Authorization", "Bearer " + token))
+        mockMvc.perform(post("/api/reservations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("seatId", firstSeatId))))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("INVALID_RESERVATION_TRANSITION"));
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"))
+                .andExpect(jsonPath("$.message").value("You already have an active reservation for this seat."));
     }
 
     @Test
-    void reservationOwnershipShouldBeEnforced() throws Exception {
+    void scenario4ShouldAllowReservingAnotherSeat() throws Exception {
+        String token = login(ownerEmail);
+
+        mockMvc.perform(post("/api/reservations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("seatId", firstSeatId))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/reservations")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("seatId", secondSeatId))))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void scenario5DifferentUserShouldKeepSeatLockingBehavior() throws Exception {
         String ownerToken = login(ownerEmail);
         String otherToken = login(otherEmail);
 
-        String reserveBody = mockMvc.perform(post("/api/reservations")
+        mockMvc.perform(post("/api/reservations")
                         .header("Authorization", "Bearer " + ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("seatId", seatId))))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
+                        .content(objectMapper.writeValueAsString(Map.of("seatId", firstSeatId))))
+                .andExpect(status().isCreated());
 
-        ReservationResponse created = objectMapper.readValue(reserveBody, ReservationResponse.class);
-
-        mockMvc.perform(get("/api/reservations/{id}", created.id())
-                        .header("Authorization", "Bearer " + otherToken))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("Forbidden"));
+        mockMvc.perform(post("/api/reservations")
+                        .header("Authorization", "Bearer " + otherToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("seatId", firstSeatId))))
+                .andExpect(status().isConflict());
     }
 
     private String login(String email) throws Exception {

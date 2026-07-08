@@ -100,13 +100,16 @@ function SeatsPage() {
       });
     } catch (err) {
       const isDuplicateReservation = err?.response?.status === 409
-        && err?.response?.data?.error === "DUPLICATE_RESERVATION";
+        && (err?.response?.data?.message === "You already have an active reservation for this seat."
+          || err?.response?.data?.message === "You already reserved this seat.");
       const message = isDuplicateReservation
-        ? "You already reserved this seat."
+        ? "You already have an active reservation for this seat."
         : extractErrorMessage(err, "Failed to reserve seat.");
       setError(message);
-      await loadSeats();
-      await loadReservations();
+      if (!isDuplicateReservation) {
+        await loadSeats();
+        await loadReservations();
+      }
     } finally {
       setBookingSeatId(null);
     }

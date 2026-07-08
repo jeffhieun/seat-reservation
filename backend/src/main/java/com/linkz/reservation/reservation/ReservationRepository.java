@@ -8,18 +8,22 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
     
     Optional<Reservation> findByUserIdAndSeatId(Long userId, Long seatId);
 
-    Optional<Reservation> findFirstByUserIdAndSeatIdAndStatusInOrderByCreatedAtDesc(
-            Long userId,
-            Long seatId,
-            Set<ReservationStatus> statuses
-    );
+    @Query(value = """
+            SELECT *
+            FROM reservations r
+            WHERE r.user_id = :userId
+              AND r.seat_id = :seatId
+              AND r.status IN ('PENDING_PAYMENT', 'CONFIRMED')
+            ORDER BY r.created_at DESC
+            LIMIT 1
+            """, nativeQuery = true)
+    Optional<Reservation> findActiveReservationByUserAndSeat(Long userId, Long seatId);
     
     List<Reservation> findByUserIdOrderByCreatedAtDesc(Long userId);
     

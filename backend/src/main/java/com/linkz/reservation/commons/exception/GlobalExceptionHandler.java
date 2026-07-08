@@ -59,10 +59,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DuplicateReservationException.class)
-    public ResponseEntity<ReservationErrorResponse> handleDuplicateReservationException(
-            DuplicateReservationException ex) {
+    public ResponseEntity<ApiErrorResponse> handleDuplicateReservationException(
+            DuplicateReservationException ex,
+            HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ReservationErrorResponse("DUPLICATE_RESERVATION", ex.getMessage()));
+                .body(buildResponse(HttpStatus.CONFLICT, "Conflict", ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(SeatUnavailableException.class)

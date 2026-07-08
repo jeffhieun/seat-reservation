@@ -12,10 +12,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.EnumSet;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 
 @Slf4j
 @Service
@@ -28,13 +26,10 @@ public class ReservationService {
     private final ReservationProperties reservationProperties;
     private final AuditService auditService;
 
-    private static final Set<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
-            EnumSet.of(ReservationStatus.PENDING_PAYMENT, ReservationStatus.CONFIRMED);
-    
     @Transactional
     public Reservation reserveSeat(Long userId, Long seatId) {
         User user = findUserOrThrow(userId);
-        validateReservation(userId, seatId);
+        validateDuplicateReservation(userId, seatId);
 
         Seat seat = seatRepository.findByIdForUpdate(seatId)
                 .orElseThrow(() -> new IllegalArgumentException("Seat not found"));
@@ -143,12 +138,9 @@ public class ReservationService {
         );
     }
 
-    public void validateReservation(Long userId, Long seatId) {
-        reservationRepository.findFirstByUserIdAndSeatIdAndStatusInOrderByCreatedAtDesc(
-                userId,
-                seatId,
-                ACTIVE_RESERVATION_STATUSES
-        ).ifPresent(reservation -> {
+    public void validateDuplicateReservation(Long userId, Long seatId) {
+        reservationRepository.findActiveReservationByUserAndSeat(userId, seatId)
+                .ifPresent(reservation -> {
             throw new DuplicateReservationException("You already have an active reservation for this seat.");
         });
     }

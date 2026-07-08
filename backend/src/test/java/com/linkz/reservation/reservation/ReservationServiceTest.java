@@ -17,7 +17,6 @@ import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -67,9 +66,8 @@ class ReservationServiceTest {
                 .build();
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(reservationRepository.findFirstByUserIdAndSeatIdAndStatusInOrderByCreatedAtDesc(
-                eq(1L), eq(10L), eq(Set.of(ReservationStatus.PENDING_PAYMENT, ReservationStatus.CONFIRMED))
-        )).thenReturn(Optional.of(existing));
+        when(reservationRepository.findActiveReservationByUserAndSeat(1L, 10L))
+                .thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> reservationService.reserveSeat(1L, 10L))
                 .isInstanceOf(DuplicateReservationException.class)
@@ -111,9 +109,8 @@ class ReservationServiceTest {
     @Test
     void reserveSeatShouldCreatePendingReservationAndLockSeat() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(reservationRepository.findFirstByUserIdAndSeatIdAndStatusInOrderByCreatedAtDesc(
-                eq(1L), eq(10L), any()
-        )).thenReturn(Optional.empty());
+        when(reservationRepository.findActiveReservationByUserAndSeat(1L, 10L))
+                .thenReturn(Optional.empty());
         when(seatRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(seat));
         when(reservationRepository.saveAndFlush(any(Reservation.class))).thenAnswer(invocation -> {
             Reservation input = invocation.getArgument(0);
