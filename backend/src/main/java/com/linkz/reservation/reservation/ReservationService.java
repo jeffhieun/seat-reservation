@@ -12,6 +12,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,11 +30,15 @@ public class ReservationService {
 
     @Transactional
     public Reservation reserveSeat(Long userId, Long seatId) {
+        Instant startedAt = Instant.now();
+        log.debug("Reservation attempt started userId={} seatId={}", userId, seatId);
+
         User user = findUserOrThrow(userId);
         validateDuplicateReservation(userId, seatId);
 
         Seat seat = seatRepository.findByIdForUpdate(seatId)
                 .orElseThrow(() -> new IllegalArgumentException("Seat not found"));
+        log.debug("Seat lock acquired userId={} seatId={}", userId, seatId);
         validateSeat(seat);
 
         seat.setStatus(SeatStatus.PENDING_PAYMENT);
@@ -46,6 +52,13 @@ public class ReservationService {
 
         Reservation savedReservation = reservationRepository.saveAndFlush(reservation);
         auditService.recordReservationCreated(savedReservation);
+        log.debug(
+                "Reservation created reservationId={} seatId={} userId={} transactionDurationMs={}",
+                savedReservation.getId(),
+                seatId,
+                userId,
+                Duration.between(startedAt, Instant.now()).toMillis()
+        );
         return savedReservation;
     }
 

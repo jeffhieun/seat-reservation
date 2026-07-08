@@ -13,6 +13,7 @@ spring:
     show-sql: false
   liquibase:
     enabled: false
+    change-log: classpath:db/changelog/db-changelog-master.xml
 
 logging:
   level:
@@ -21,4 +22,3 @@ logging:
 reservation:
   expiration-minutes: 1
   scheduler-interval-seconds: 10
-

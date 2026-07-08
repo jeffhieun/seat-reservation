@@ -8,12 +8,27 @@ import ReservationTabs from "../components/ReservationTabs";
 import ReservationTable from "../components/ReservationTable";
 
 const AUTO_REFRESH_MS = 15000;
+const ACTIVE_RESERVATION_CONFLICT_MESSAGE = "You already have an active reservation for this seat.";
+const SEAT_RESERVED_BY_OTHER_USER_MESSAGE = "Seat has already been reserved by another user.";
 
 function extractErrorMessage(err, fallbackMessage) {
   return err?.response?.data?.message
     || err?.response?.data?.error
     || err?.message
     || fallbackMessage;
+}
+
+function getReservationConflictMessage(err) {
+  const conflictMessage = err?.response?.data?.message;
+
+  if (
+    conflictMessage === ACTIVE_RESERVATION_CONFLICT_MESSAGE
+    || conflictMessage === "You already reserved this seat."
+  ) {
+    return ACTIVE_RESERVATION_CONFLICT_MESSAGE;
+  }
+
+  return SEAT_RESERVED_BY_OTHER_USER_MESSAGE;
 }
 
 function SeatsPage() {
@@ -99,14 +114,12 @@ function SeatsPage() {
         state: { reservation },
       });
     } catch (err) {
-      const isDuplicateReservation = err?.response?.status === 409
-        && (err?.response?.data?.message === "You already have an active reservation for this seat."
-          || err?.response?.data?.message === "You already reserved this seat.");
-      const message = isDuplicateReservation
-        ? "You already have an active reservation for this seat."
+      const isConflict = err?.response?.status === 409;
+      const message = isConflict
+        ? getReservationConflictMessage(err)
         : extractErrorMessage(err, "Failed to reserve seat.");
       setError(message);
-      if (!isDuplicateReservation) {
+      if (!isConflict) {
         await loadSeats();
         await loadReservations();
       }

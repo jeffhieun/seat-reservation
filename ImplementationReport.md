@@ -1,20 +1,5 @@
 # Implementation Audit Report — Seat Reservation Platform
 
-
-
-## Reservation Expiration
-**Status:** ✅ Implemented
-
-**Evidence:** `ReservationApplication` (`@EnableScheduling`), `ReservationScheduler#releaseExpiredReservations`, `ReservationService#getExpiredReservations`, `ReservationService#expireReservation`, `ReservationProperties`
-
-**Missing implementation:**
-- Scheduler uses broad catches that can mask repeated failures.
-
-**Recommended improvements:**
-- Tighten error handling and add monitoring/alerting.
-
-**Priority:** Medium
-
 ## Concurrency
 **Status:** 🟡 Partial
 

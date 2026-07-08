@@ -82,5 +82,21 @@ describe("SeatsPage duplicate reservation handling", () => {
     expect(getUserReservations).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Reserve A1" })).toBeInTheDocument();
   });
-});
 
+  it("shows seat conflict message when another user already reserved the seat", async () => {
+    reserveSeat.mockRejectedValue({
+      response: {
+        status: 409,
+        data: {},
+      },
+    });
+
+    render(<SeatsPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Reserve A1" }));
+
+    await screen.findByText("Seat has already been reserved by another user.");
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(screen.queryByText("Booking seat...")).not.toBeInTheDocument();
+  });
+});
