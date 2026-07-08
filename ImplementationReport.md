@@ -2,18 +2,7 @@
 
 
 
-## Integration (Button Click Trace)
-**Status:** 🟡 Partial
 
-**Evidence:** Reserve flow is fully connected (`SeatsPage` → `/api/reservations` → `ReservationController` → `ReservationService` → repositories/DB → response/UI)
-
-**Missing implementation:**
-- Pay flow is not fully closed-loop in UI; webhook confirmation is outside direct button result.
-
-**Recommended improvements:**
-- Complete payment confirmation loop before showing success in UI.
-
-**Priority:** High
 
 ## Code Quality & Tests
 **Status:** 🟡 Partial

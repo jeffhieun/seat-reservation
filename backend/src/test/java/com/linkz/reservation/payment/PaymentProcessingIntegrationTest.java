@@ -129,6 +129,38 @@ class PaymentProcessingIntegrationTest {
     }
 
     @Test
+    void initiatePaymentTwiceShouldReturnExistingPendingPayment() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+        ReservationResponse reservation = reserveSeat(ownerToken);
+
+        String firstResponseBody = mockMvc.perform(post("/api/payments")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .param("reservationId", reservation.id().toString()))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        PaymentResponse firstPayment = objectMapper.readValue(firstResponseBody, PaymentResponse.class);
+
+        String secondResponseBody = mockMvc.perform(post("/api/payments")
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .param("reservationId", reservation.id().toString()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        PaymentResponse secondPayment = objectMapper.readValue(secondResponseBody, PaymentResponse.class);
+
+        assertThat(secondPayment.id()).isEqualTo(firstPayment.id());
+        assertThat(secondPayment.reservationId()).isEqualTo(firstPayment.reservationId());
+        assertThat(secondPayment.providerReference()).isEqualTo(firstPayment.providerReference());
+        assertThat(secondPayment.status()).isEqualTo(PaymentStatus.PENDING.name());
+        assertThat(paymentRepository.count()).isEqualTo(1L);
+    }
+
+    @Test
     void completePaymentWithoutBodyShouldReturnBadRequest() throws Exception {
         String ownerToken = login("payer1@test.com", "password123");
         ReservationResponse reservation = reserveSeat(ownerToken);
