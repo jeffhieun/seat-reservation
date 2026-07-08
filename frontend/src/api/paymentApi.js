@@ -13,3 +13,7 @@ export async function getPaymentById(paymentId) {
   return response.data;
 }
 
+export async function completePayment(paymentId) {
+  const response = await axiosClient.post(`/api/payments/${paymentId}`);
+  return response.data;
+}

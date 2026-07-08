@@ -1,53 +1,5 @@
 # Implementation Audit Report — Seat Reservation Platform
 
-## Authentication
-**Status:** 🟡 Partial
-
-**Evidence:** `AuthController`, `AuthService`, `SecurityConfig`, `JwtAuthenticationFilter`, `JwtService`, `frontend/src/pages/LoginPage.jsx`, `frontend/src/services/axiosClient.js`
-
-**Missing implementation:**
-- `GET /api/auth/me` endpoint is missing.
-- No refresh-token/session renewal flow.
-- Unauthorized handling is not explicitly centralized with a custom entry point.
-
-**Recommended improvements:**
-- Add `/api/auth/me`.
-- Add refresh-token strategy.
-- Standardize unauthorized response payloads.
-
-**Priority:** High
-
-## Seat Management
-**Status:** 🟡 Partial
-
-**Evidence:** `SeatController#getSeats`, `SeatService#getAvailableSeats`, `SeatRepository#findByIdForUpdate`, `Seat`, `SeatStatus`, `frontend/src/pages/SeatsPage.jsx`
-
-**Missing implementation:**
-- API exposes only `AVAILABLE` seats.
-- No dedicated seat release endpoint.
-- Seat locking is implicit (status + DB lock), not explicit as a lock resource.
-
-**Recommended improvements:**
-- Add endpoint for full seat status listing (or admin view).
-- Document lock/release semantics.
-- Add lock transition tests.
-
-**Priority:** Medium
-
-## Reservation
-**Status:** 🟡 Partial
-
-**Evidence:** `ReservationController`, `ReservationService`, `ReservationRepository`, `Reservation`, `ReservationStatus`, `frontend/src/components/ReservationTable.jsx`
-
-**Missing implementation:**
-- Duplicate reservation prevention is not explicitly enforced with a business rule (despite `findByUserIdAndSeatId` existing).
-
-**Recommended improvements:**
-- Define and enforce duplicate reservation policy.
-- Add duplicate-attempt tests.
-
-**Priority:** Medium
-
 ## Payment
 **Status:** 🟡 Partial
 

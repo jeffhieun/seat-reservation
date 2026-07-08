@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getReservationById } from "../api/reservationApi";
-import { initiatePayment } from "../api/paymentApi";
+import { completePayment, getPaymentById, initiatePayment } from "../api/paymentApi";
 import Navbar from "../components/Navbar";
 
 function PaymentPage() {
@@ -14,12 +14,14 @@ function PaymentPage() {
   );
 
   const [payment, setPayment] = useState(null);
-  const [loadingReservation, setLoadingReservation] = useState(
-    !location.state?.reservation
-  );
+  const [loadingReservation, setLoadingReservation] = useState(!location.state?.reservation);
+  const [loadingPayment, setLoadingPayment] = useState(true);
 
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
+  const paymentIdFromQuery = new URLSearchParams(location.search).get("paymentId");
+  const paymentStorageKey = `paymentId:${reservationId}`;
 
   useEffect(() => {
     const loadReservation = async () => {
@@ -47,38 +49,85 @@ function PaymentPage() {
     loadReservation();
   }, [reservationId, reservation]);
 
+  useEffect(() => {
+    const loadPayment = async () => {
+      setLoadingPayment(true);
+      setError("");
+      setInfoMessage("");
 
-  const handlePayNow = async () => {
-    if (paying) {
+      try {
+        const knownPaymentId = paymentIdFromQuery || window.sessionStorage.getItem(paymentStorageKey);
+
+        if (knownPaymentId) {
+          const existingPayment = await getPaymentById(knownPaymentId);
+          setPayment(existingPayment);
+          window.sessionStorage.setItem(paymentStorageKey, String(existingPayment.id));
+          return;
+        }
+
+        const createdPayment = await initiatePayment(reservationId);
+        setPayment(createdPayment);
+        window.sessionStorage.setItem(paymentStorageKey, String(createdPayment.id));
+      } catch (err) {
+        setError(
+          err?.response?.data?.message
+          || err?.response?.data?.error
+          || err?.message
+          || "Failed to load payment."
+        );
+      } finally {
+        setLoadingPayment(false);
+      }
+    };
+
+    loadPayment();
+  }, [paymentIdFromQuery, paymentStorageKey, reservationId]);
+
+  useEffect(() => {
+    if (payment?.status === "SUCCESS" && reservation?.status === "CONFIRMED") {
+      navigate("/success", {
+        state: {
+          reservation,
+          payment,
+        },
+      });
+    }
+  }, [navigate, payment, reservation]);
+
+  const handleCompletePayment = async () => {
+    if (paying || !payment?.id || payment?.status !== "PENDING") {
       return;
     }
 
     setError("");
+    setInfoMessage("");
     setPaying(true);
 
     try {
-      const paymentResponse = await initiatePayment(reservationId);
+      const paymentResponse = await completePayment(payment.id);
+      const refreshedPayment = await getPaymentById(payment.id);
+      const refreshedReservation = await getReservationById(reservationId);
 
-      console.log("Payment created:", paymentResponse);
+      setPayment(refreshedPayment);
+      setReservation(refreshedReservation);
 
-      setPayment(paymentResponse);
-
-      navigate("/success", {
-        state: {
-          reservation,
-          payment: paymentResponse,
-        },
-      });
+      if (
+        paymentResponse?.status === "SUCCESS"
+        && paymentResponse?.reservationStatus === "CONFIRMED"
+      ) {
+        setInfoMessage("Payment completed successfully.");
+      } else {
+        setInfoMessage("Payment did not complete successfully.");
+      }
 
     } catch (err) {
-      console.error("Payment error:", err);
-
       setError(
+        err?.response?.data?.message ||
         err?.response?.data?.error ||
+        (typeof err?.response?.data === "string" ? err.response.data : null) ||
         err?.message ||
-        "Payment failed."
+        "Failed to complete payment."
       );
-
     } finally {
       setPaying(false);
     }
@@ -97,11 +146,19 @@ function PaymentPage() {
         {loadingReservation && (
           <p>Loading reservation...</p>
         )}
+        {loadingPayment && (
+          <p>Loading payment...</p>
+        )}
 
 
         {error && (
           <p className="error-text">
             {error}
+          </p>
+        )}
+        {infoMessage && (
+          <p className="info-text">
+            {infoMessage}
           </p>
         )}
 
@@ -128,7 +185,7 @@ function PaymentPage() {
             <p>
               <strong>Seat Number:</strong>
               {" "}
-              {reservation.seat_number}
+              {reservation.seat_number || reservation.seatNumber}
             </p>
 
 
@@ -139,7 +196,7 @@ function PaymentPage() {
             </p>
 
 
-            {payment && (
+            {payment ? (
               <>
                 <p>
                   <strong>Payment ID:</strong>
@@ -161,17 +218,17 @@ function PaymentPage() {
                   {payment.amount}
                 </p>
               </>
-            )}
+            ) : <p><strong>Payment Status:</strong> -</p>}
 
 
 
             <button
               className="btn"
               type="button"
-              onClick={handlePayNow}
-              disabled={paying}
+              onClick={handleCompletePayment}
+              disabled={paying || loadingPayment || !payment || payment.status !== "PENDING"}
             >
-              {paying ? "Processing..." : "Pay Now"}
+              {paying ? "Completing Payment..." : "Complete Payment"}
             </button>
 
 

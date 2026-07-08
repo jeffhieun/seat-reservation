@@ -60,6 +60,7 @@ class PaymentProcessingIntegrationTest {
     private PasswordEncoder passwordEncoder;
 
     private Long seatId;
+    private Long secondSeatId;
 
     @BeforeEach
     void setUp() {
@@ -71,6 +72,11 @@ class PaymentProcessingIntegrationTest {
 
         seatId = seatRepository.save(Seat.builder()
                 .seatNumber("P001")
+                .status(SeatStatus.AVAILABLE)
+                .build()).getId();
+
+        secondSeatId = seatRepository.save(Seat.builder()
+                .seatNumber("P002")
                 .status(SeatStatus.AVAILABLE)
                 .build()).getId();
 
@@ -86,9 +92,8 @@ class PaymentProcessingIntegrationTest {
     }
 
     @Test
-    void ownerCanInitiateAndFetchPaymentWhileOthersCannot() throws Exception {
+    void completePaymentShouldSucceedAndConfirmReservation() throws Exception {
         String ownerToken = login("payer1@test.com", "password123");
-        String otherToken = login("payer2@test.com", "password123");
 
         ReservationResponse reservation = reserveSeat(ownerToken);
         assertThat(seatRepository.findById(seatId)).get()
@@ -101,39 +106,91 @@ class PaymentProcessingIntegrationTest {
         assertThat(payment.amount()).isEqualTo("10.00");
         assertThat(payment.providerReference()).startsWith("PAY_");
 
-        PaymentResponse fetchedPayment = getPayment(ownerToken, payment.id());
-        assertThat(fetchedPayment).isEqualTo(payment);
+        String completionBody = mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
-        mockMvc.perform(post("/api/payments")
-                        .header("Authorization", "Bearer " + ownerToken)
-                        .param("reservationId", reservation.id().toString()))
-                .andExpect(status().isConflict());
+        PaymentCompletionResponse completionResponse =
+                objectMapper.readValue(completionBody, PaymentCompletionResponse.class);
+        assertThat(completionResponse.paymentId()).isEqualTo(payment.id());
+        assertThat(completionResponse.status()).isEqualTo(PaymentStatus.SUCCESS.name());
+        assertThat(completionResponse.reservationStatus()).isEqualTo(ReservationStatus.CONFIRMED.name());
 
-        mockMvc.perform(post("/api/payments")
-                        .header("Authorization", "Bearer " + otherToken)
-                        .param("reservationId", reservation.id().toString()))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(get("/api/payments/{paymentId}", payment.id())
-                        .header("Authorization", "Bearer " + otherToken))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(post("/api/webhooks/payment-success")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "eventId", "evt-payment-success-1",
-                                "providerReference", payment.providerReference()
-                        ))))
-                .andExpect(status().isOk());
-
-        Payment paymentAfterWebhook = paymentRepository.findById(payment.id()).orElseThrow();
-        assertThat(paymentAfterWebhook.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
+        Payment paymentAfterCompletion = paymentRepository.findById(payment.id()).orElseThrow();
+        assertThat(paymentAfterCompletion.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
         assertThat(reservationRepository.findById(reservation.id())).get()
                 .extracting(res -> res.getStatus().name())
                 .isEqualTo(ReservationStatus.CONFIRMED.name());
         assertThat(seatRepository.findById(seatId)).get()
                 .extracting(Seat::getStatus)
                 .isEqualTo(SeatStatus.RESERVED);
+    }
+
+    @Test
+    void completePaymentTwiceShouldBeIdempotent() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+        ReservationResponse reservation = reserveSeat(ownerToken);
+        PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
+
+        mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk());
+
+        Payment paymentAfterSecondCall = paymentRepository.findById(payment.id()).orElseThrow();
+        assertThat(paymentAfterSecondCall.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
+        assertThat(reservationRepository.findById(reservation.id())).get()
+                .extracting(res -> res.getStatus().name())
+                .isEqualTo(ReservationStatus.CONFIRMED.name());
+        assertThat(seatRepository.findById(seatId)).get()
+                .extracting(Seat::getStatus)
+                .isEqualTo(SeatStatus.RESERVED);
+    }
+
+    @Test
+    void completePaymentByWrongUserShouldReturnForbidden() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+        String otherToken = login("payer2@test.com", "password123");
+        ReservationResponse reservation = reserveSeat(ownerToken);
+        PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
+
+        mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
+                        .header("Authorization", "Bearer " + otherToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void completePaymentForMissingPaymentShouldReturnNotFound() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+
+        mockMvc.perform(post("/api/payments/{paymentId}", 999999L)
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void failedPaymentCannotBeCompleted() throws Exception {
+        String ownerToken = login("payer1@test.com", "password123");
+        ReservationResponse reservation = reserveSeat(ownerToken, secondSeatId);
+        PaymentResponse payment = initiatePayment(ownerToken, reservation.id());
+
+        mockMvc.perform(post("/api/webhooks/payment-failure")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "eventId", "evt-payment-failure-1",
+                                "providerReference", payment.providerReference()
+                        ))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/payments/{paymentId}", payment.id())
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isConflict());
     }
 
     private String login(String email, String password) throws Exception {
@@ -149,10 +206,14 @@ class PaymentProcessingIntegrationTest {
     }
 
     private ReservationResponse reserveSeat(String token) throws Exception {
+        return reserveSeat(token, seatId);
+    }
+
+    private ReservationResponse reserveSeat(String token, Long targetSeatId) throws Exception {
         String responseBody = mockMvc.perform(post("/api/reservations")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + token)
-                        .content(objectMapper.writeValueAsString(new ReservationRequest(seatId))))
+                        .content(objectMapper.writeValueAsString(new ReservationRequest(targetSeatId))))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -184,4 +245,3 @@ class PaymentProcessingIntegrationTest {
         return objectMapper.readValue(responseBody, PaymentResponse.class);
     }
 }
-

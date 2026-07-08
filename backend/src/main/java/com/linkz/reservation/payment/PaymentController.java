@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class PaymentController {
     
     private final PaymentService paymentService;
+    private final PaymentCompletionService paymentCompletionService;
     private final UserRepository userRepository;
     
     @PostMapping
@@ -68,5 +69,25 @@ public class PaymentController {
             return ResponseEntity.notFound().build();
         }
     }
-}
 
+    @PostMapping("/{paymentId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> completePayment(@PathVariable Long paymentId, Authentication authentication) {
+        try {
+            User user = userRepository.findByEmail(authentication.getName())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+            PaymentCompletionResponse response = paymentCompletionService.completePayment(paymentId, user.getId());
+            return ResponseEntity.ok(response);
+        } catch (PaymentAccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (PaymentConflictException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Unexpected error during payment completion", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+}
