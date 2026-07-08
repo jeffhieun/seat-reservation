@@ -1,19 +1,6 @@
 # Implementation Audit Report — Seat Reservation Platform
 
-## Payment
-**Status:** 🟡 Partial
 
-**Evidence:** `PaymentController`, `PaymentService`, `WebhookController`, `WebhookService`, `PaymentRepository`, migration `009-payment-reservation-unique-constraint.xml`, `frontend/src/pages/PaymentPage.jsx`
-
-**Missing implementation:**
-- No `POST /api/payments/{id}` endpoint.
-- Frontend marks success immediately after payment initiation (before webhook confirmation).
-
-**Recommended improvements:**
-- Add explicit mock completion endpoint or end-to-end completion path.
-- Gate success page on confirmed backend payment/reservation state.
-
-**Priority:** High
 
 ## Reservation Expiration
 **Status:** ✅ Implemented
