@@ -27,6 +27,7 @@ describe("axiosClient", () => {
   it("configures JSON content type and Authorization header", () => {
     expect(axiosCreate).toHaveBeenCalledWith({
       baseURL: "http://localhost:8080",
+      timeout: 10000,
       headers: {
         "Content-Type": "application/json",
       },

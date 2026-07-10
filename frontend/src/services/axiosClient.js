@@ -1,9 +1,11 @@
 import axios from "axios";
+import { normalizeApiError } from "../utils/apiError.js";
 
 const BASE_URL = "http://localhost:8080";
 
 const axiosClient = axios.create({
   baseURL: BASE_URL,
+  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -40,7 +42,7 @@ axiosClient.interceptors.response.use(
     const originalRequest = error?.config;
 
     if (error?.response?.status !== 401 || !originalRequest) {
-      return Promise.reject(error);
+      return Promise.reject(normalizeApiError(error));
     }
 
     const requestUrl = originalRequest?.url || "";
@@ -52,7 +54,7 @@ axiosClient.interceptors.response.use(
       !refreshToken
     ) {
       logoutAndRedirect();
-      return Promise.reject(error);
+      return Promise.reject(normalizeApiError(error));
     }
 
     originalRequest._retry = true;
@@ -89,7 +91,7 @@ axiosClient.interceptors.response.use(
       return axiosClient(originalRequest);
     } catch (refreshError) {
       logoutAndRedirect();
-      return Promise.reject(refreshError);
+      return Promise.reject(normalizeApiError(refreshError));
     }
   }
 );
