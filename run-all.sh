@@ -73,24 +73,12 @@ setup_compose_command() {
 }
 
 ensure_podman_machine() {
-  local machine_name
-  machine_name="$(podman machine list --format "{{.Name}}" | head -n1 || true)"
-  if [[ -z "${machine_name}" ]]; then
-    log_error "No Podman machine found. Create one with: podman machine init"
-    exit 1
-  fi
-
-  local running
-  running="$(podman machine list --format "{{if eq .Name \"${machine_name}\"}}{{.Running}}{{end}}" | tr -d '[:space:]')"
-  if [[ "${running}" != "true" ]]; then
-    log_info "Starting Podman machine '${machine_name}'..."
-    podman machine start "${machine_name}"
-  else
-    log_success "Podman machine '${machine_name}' is already running."
+  if ! podman info >/dev/null 2>&1; then
+    log_info "Starting Podman machine..."
+    podman machine start
   fi
 
   local retries=30
-  local attempt
   for attempt in $(seq 1 "${retries}"); do
     if podman info >/dev/null 2>&1; then
       log_success "Podman machine is healthy."
@@ -102,6 +90,37 @@ ensure_podman_machine() {
   log_error "Podman machine did not become healthy."
   exit 1
 }
+
+#ensure_podman_machine() {
+#  local machine_name
+#  machine_name="$(podman machine list --format "{{.Name}}" | head -n1 || true)"
+#  if [[ -z "${machine_name}" ]]; then
+#    log_error "No Podman machine found. Create one with: podman machine init"
+#    exit 1
+#  fi
+#
+#  local running
+#  running="$(podman machine list --format "{{if eq .Name \"${machine_name}\"}}{{.Running}}{{end}}" | tr -d '[:space:]')"
+#  if [[ "${running}" != "true" ]]; then
+#    log_info "Starting Podman machine '${machine_name}'..."
+#    podman machine start "${machine_name}"
+#  else
+#    log_success "Podman machine '${machine_name}' is already running."
+#  fi
+#
+#  local retries=30
+#  local attempt
+#  for attempt in $(seq 1 "${retries}"); do
+#    if podman info >/dev/null 2>&1; then
+#      log_success "Podman machine is healthy."
+#      return
+#    fi
+#    sleep 1
+#  done
+#
+#  log_error "Podman machine did not become healthy."
+#  exit 1
+#}
 
 validate_tools() {
   require_command "podman" "Install Podman first."
