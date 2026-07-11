@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import SeatGrid from "../components/SeatGrid";
 import ReservationTabs from "../components/ReservationTabs";
 import ReservationTable from "../components/ReservationTable";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 import useReservationPolling from "../hooks/useReservationPolling";
 
 const AUTO_REFRESH_MS = 5000;
@@ -201,7 +202,7 @@ function SeatsPage() {
 
           <div className="seats-grid-wrap">
             {loading ? (
-              <p>Loading seats...</p>
+              <LoadingSpinner message="Loading seats..." />
             ) : (
               <SeatGrid
                 seats={seats}
@@ -225,7 +226,7 @@ function SeatsPage() {
 
           <div className="reservations-table-wrap">
             {reservationsLoading ? (
-              <p>Loading reservations...</p>
+              <LoadingSpinner message="Loading reservations..." />
             ) : (
               <ReservationTable
                 reservations={filteredReservations}

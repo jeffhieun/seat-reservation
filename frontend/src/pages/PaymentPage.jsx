@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { getReservationById } from "../api/reservationApi";
 import { initiatePayment } from "../api/paymentApi";
 import Navbar from "../components/Navbar";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 import { getApiErrorMessage } from "../utils/apiError";
 
 function PaymentPage() {
@@ -74,7 +75,7 @@ function PaymentPage() {
 
 
         {loadingReservation && (
-          <p>Loading reservation...</p>
+          <LoadingSpinner message="Loading reservation..." />
         )}
         {error && (
           <p className="error-text">

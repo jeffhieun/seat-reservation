@@ -1,4 +1,5 @@
 import "./ReservationCard.css";
+import LoadingSpinner from "./common/LoadingSpinner";
 
 function formatDate(value) {
   if (!value) {
@@ -28,7 +29,7 @@ function getBadgeClass(status) {
 
 function ReservationCard({ reservation, loading, error, onConfirm, onExpire, actionLoading }) {
   if (loading) {
-    return <p className="empty-state">Loading reservation details...</p>;
+    return <LoadingSpinner message="Loading reservation details..." />;
   }
 
   if (error) {

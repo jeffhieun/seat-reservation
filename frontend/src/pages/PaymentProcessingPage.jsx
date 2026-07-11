@@ -6,6 +6,7 @@ import {
   getPaymentById,
 } from "../api/paymentApi";
 import Navbar from "../components/Navbar";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 import { getApiErrorMessage } from "../utils/apiError";
 
 const POLL_INTERVAL_MS = 2000;
@@ -125,7 +126,7 @@ function PaymentProcessingPage() {
       <section className="page-content">
         <h2>Processing Payment</h2>
 
-        {loading && !error ? <p className="info-text">Processing payment... Please wait...</p> : null}
+        {loading && !error ? <LoadingSpinner message="Processing payment... Please wait..." /> : null}
         {payment?.status === "PENDING" && !timedOut ? <p className="info-text">Processing payment...</p> : null}
         {error ? <p className="error-text">{error}</p> : null}
 
