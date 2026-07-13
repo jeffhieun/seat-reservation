@@ -7,9 +7,9 @@ import {
 } from "../api/paymentApi";
 import Navbar from "../components/Navbar";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import { getApiErrorMessage } from "../utils/apiError";
+import { getApiErrorMessage, normalizeApiError } from "../utils/apiError";
 
-const POLL_INTERVAL_MS = 2000;
+const POLL_INTERVAL_MS = 3000;
 const TIMEOUT_MS = 60000;
 const IS_DEVELOPMENT_MODE = import.meta.env.MODE === "development";
 
@@ -24,6 +24,7 @@ function PaymentProcessingPage() {
   const [error, setError] = useState("");
   const [timedOut, setTimedOut] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
     if (timedOut) {
@@ -45,6 +46,7 @@ function PaymentProcessingPage() {
         }
         setPayment(currentPayment);
         setLoading(false);
+        setError("");
 
         if (
           currentPayment?.status === "SUCCESS"
@@ -90,7 +92,8 @@ function PaymentProcessingPage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(getApiErrorMessage(err, "Failed to check payment status."));
+          const errorMessage = getApiErrorMessage(err, "Failed to check payment status. Please try again.");
+          setError(errorMessage);
           setLoading(false);
         }
       } finally {
@@ -120,31 +123,130 @@ function PaymentProcessingPage() {
     navigate("/seats", { replace: true });
   };
 
+  const handleRefreshStatus = async () => {
+    setIsRetrying(true);
+    setError("");
+    try {
+      const currentPayment = await getPaymentById(paymentId);
+      setPayment(currentPayment);
+
+      if (
+        currentPayment?.status === "SUCCESS"
+        && currentPayment?.reservationStatus === "CONFIRMED"
+      ) {
+        const reservation = await getReservationById(currentPayment.reservationId);
+        navigate("/payment/success", {
+          replace: true,
+          state: {
+            reservation,
+            payment: currentPayment,
+          },
+        });
+        return;
+      }
+
+      if (currentPayment?.status === "FAILED") {
+        navigate("/payment/failed", {
+          replace: true,
+          state: {
+            payment: currentPayment,
+            reservationId: currentPayment?.reservationId,
+          },
+        });
+        return;
+      }
+
+      if (currentPayment?.status === "PENDING") {
+        setTimedOut(false);
+        startedAtRef.current = Date.now();
+      }
+    } catch (err) {
+      const errorMessage = getApiErrorMessage(err, "Failed to refresh payment status. Please try again.");
+      setError(errorMessage);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   return (
     <main>
       <Navbar />
       <section className="page-content">
         <h2>Processing Payment</h2>
 
-        {loading && !error ? <LoadingSpinner message="Processing payment... Please wait..." /> : null}
-        {payment?.status === "PENDING" && !timedOut ? <p className="info-text">Processing payment...</p> : null}
-        {error ? <p className="error-text">{error}</p> : null}
+        {loading && !error ? (
+          <LoadingSpinner message="Processing payment... Please wait..." />
+        ) : null}
 
-        {timedOut ? (
-          <>
-            <p className="error-text">Payment timed out. Please retry.</p>
-            <button type="button" className="btn" onClick={handleRetry}>
-              Retry
+        {payment?.status === "PENDING" && !timedOut ? (
+          <div role="status" aria-live="polite" aria-busy="true">
+            <p className="info-text">
+              Payment is being processed...
+              <br />
+              <small>Payment ID: {payment.id}</small>
+            </p>
+          </div>
+        ) : null}
+
+        {error && !timedOut ? (
+          <div role="alert">
+            <p className="error-text">{error}</p>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleRefreshStatus}
+              disabled={isRetrying}
+              aria-label="Refresh payment status"
+            >
+              {isRetrying ? "Checking..." : "Refresh Status"}
             </button>
             <button
               type="button"
               className="btn btn-secondary"
               onClick={() => navigate("/seats")}
               style={{ marginTop: 12 }}
+              aria-label="Return to seat selection"
             >
               Back to Reservations
             </button>
-          </>
+          </div>
+        ) : null}
+
+        {timedOut ? (
+          <div role="alert">
+            <p className="error-text">
+              Payment confirmation is taking longer than expected.
+              <br />
+              <small>Payment ID: {payment?.id || paymentId}</small>
+            </p>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleRetry}
+              aria-label="Try initiating payment again"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleRefreshStatus}
+              disabled={isRetrying}
+              style={{ marginTop: 12 }}
+              aria-label="Check payment status again"
+            >
+              {isRetrying ? "Checking..." : "Refresh Status"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => navigate("/seats")}
+              style={{ marginTop: 12 }}
+              aria-label="Return to seat selection"
+            >
+              Back to Reservations
+            </button>
+          </div>
         ) : null}
       </section>
     </main>

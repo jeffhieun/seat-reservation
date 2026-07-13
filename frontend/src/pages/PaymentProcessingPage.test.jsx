@@ -86,9 +86,9 @@ describe("PaymentProcessingPage", () => {
       await vi.advanceTimersByTimeAsync(60000);
     });
 
-    expect(screen.getByText("Payment timed out. Please retry.")).toBeInTheDocument();
+    expect(screen.getByText(/Payment confirmation is taking longer than expected/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: /Try initiating payment again/ }));
     expect(navigateMock).toHaveBeenCalledWith("/payment/5", expect.any(Object));
     vi.useRealTimers();
   });
