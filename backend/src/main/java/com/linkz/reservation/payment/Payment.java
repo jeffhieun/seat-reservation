@@ -44,6 +44,9 @@ public class Payment {
     
     @Column(name = "provider_reference", length = 255)
     private String providerReference;
+
+    @Column(name = "failure_reason", length = 500)
+    private String failureReason;
     
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;

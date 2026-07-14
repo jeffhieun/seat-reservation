@@ -64,6 +64,13 @@ function SuccessPage() {
 
 
             <p>
+              <strong>Reservation Status:</strong>
+              {" "}
+              {reservation.status}
+            </p>
+
+
+            <p>
               <strong>Payment ID:</strong>
               {" "}
               {payment.id}
@@ -89,6 +96,15 @@ function SuccessPage() {
               {" "}
               {payment.providerReference}
             </p>
+
+
+            {payment.createdAt && (
+              <p>
+                <strong>Confirmation Time:</strong>
+                {" "}
+                {new Date(payment.createdAt).toLocaleString()}
+              </p>
+            )}
 
 
           </div>

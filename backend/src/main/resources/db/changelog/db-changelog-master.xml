@@ -16,5 +16,6 @@
     <include file="db/changelog/008-audit-events.xml"/>
     <include file="db/changelog/009-payment-reservation-unique-constraint.xml"/>
     <include file="db/changelog/010-add-version-columns.xml"/>
+    <include file="db/changelog/011-add-failure-reason-to-payments.xml"/>
 
 </databaseChangeLog>

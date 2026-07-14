@@ -15,6 +15,7 @@ let useLocationMock = () => ({
       status: "SUCCESS",
       amount: "10.00",
       providerReference: "PAY_ABC123DEF456",
+      createdAt: "2024-07-13T10:00:00",
     },
   },
 });
@@ -47,6 +48,7 @@ describe("SuccessPage", () => {
           status: "SUCCESS",
           amount: "10.00",
           providerReference: "PAY_ABC123DEF456",
+          createdAt: "2024-07-13T10:00:00",
         },
       },
     });
@@ -60,6 +62,8 @@ describe("SuccessPage", () => {
     expect(screen.getByText("1")).toBeInTheDocument();
     expect(screen.getByText(/Seat Number:/)).toBeInTheDocument();
     expect(screen.getByText("A1")).toBeInTheDocument();
+    expect(screen.getByText(/Reservation Status:/)).toBeInTheDocument();
+    expect(screen.getByText("CONFIRMED")).toBeInTheDocument();
     expect(screen.getByText(/Payment ID:/)).toBeInTheDocument();
     expect(screen.getByText("10")).toBeInTheDocument();
     expect(screen.getByText(/Payment Status:/)).toBeInTheDocument();
@@ -68,6 +72,7 @@ describe("SuccessPage", () => {
     expect(screen.getByText("10.00")).toBeInTheDocument();
     expect(screen.getByText(/Provider Reference:/)).toBeInTheDocument();
     expect(screen.getByText("PAY_ABC123DEF456")).toBeInTheDocument();
+    expect(screen.getByText(/Confirmation Time:/)).toBeInTheDocument();
   });
 
   it("navigates to seats when back button is clicked", () => {
@@ -86,4 +91,5 @@ describe("SuccessPage", () => {
     expect(screen.getByText("No booking data available.")).toBeInTheDocument();
   });
 });
+
 

@@ -109,7 +109,8 @@ public class PaymentService {
         Payment payment = getPaymentByProviderReference(providerReference);
         return failPaymentInternal(
                 payment,
-                () -> reservationService.expireReservation(payment.getReservation().getId())
+                () -> reservationService.expireReservation(payment.getReservation().getId()),
+                "Payment provider rejected the transaction"
         );
     }
 
@@ -130,6 +131,7 @@ public class PaymentService {
             case "SUCCESS" -> {
                 reservationService.confirmReservation(payment.getReservation().getId(), userId);
                 payment.setStatus(PaymentStatus.SUCCESS);
+                payment.setFailureReason(null);
                 paymentRepository.saveAndFlush(payment);
                 auditService.recordPaymentSuccess(payment);
                 return payment;
@@ -137,14 +139,15 @@ public class PaymentService {
             case "FAILED" -> {
                 return failPaymentInternal(
                         payment,
-                        () -> reservationService.expireReservation(payment.getReservation().getId(), userId)
+                        () -> reservationService.expireReservation(payment.getReservation().getId(), userId),
+                        "Payment processing failed"
                 );
             }
             default -> throw new IllegalArgumentException("Invalid payment result");
         }
     }
 
-    private Payment failPaymentInternal(Payment payment, Runnable expireReservationAction) {
+    private Payment failPaymentInternal(Payment payment, Runnable expireReservationAction, String failureReason) {
         if (PaymentStatus.SUCCESS.equals(payment.getStatus())) {
             throw new PaymentConflictException("Payment has already been completed");
         }
@@ -155,6 +158,7 @@ public class PaymentService {
 
         expireReservationAction.run();
         payment.setStatus(PaymentStatus.FAILED);
+        payment.setFailureReason(failureReason);
         paymentRepository.saveAndFlush(payment);
         auditService.recordPaymentFailure(payment);
         return payment;

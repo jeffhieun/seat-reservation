@@ -6,6 +6,7 @@ public record PaymentResponse(
     String reservationStatus,
     String status,
     String providerReference,
+    String failureReason,
     String amount,
     String createdAt,
     String updatedAt
@@ -17,6 +18,7 @@ public record PaymentResponse(
                 payment.getReservation().getStatus().name(),
                 payment.getStatus().name(),
                 payment.getProviderReference(),
+                payment.getFailureReason(),
                 payment.getAmount().toPlainString(),
                 payment.getCreatedAt() != null ? payment.getCreatedAt().toString() : null,
                 payment.getUpdatedAt() != null ? payment.getUpdatedAt().toString() : null
