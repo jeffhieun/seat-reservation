@@ -193,7 +193,3 @@ cd frontend
 - Publish OpenAPI docs automatically from CI.
 - Add dedicated end-to-end browser tests.
 
-## Screenshots
-
-Screenshots are not included yet. Add them under `docs/screenshots/` if needed.
-
